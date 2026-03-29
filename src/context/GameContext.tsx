@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
-import type { OperationsConsoleState, ProgramState, GamePhase } from '../engine/types'
+import type { OperationsConsoleState, ProgramState, GamePhase, HospitalProfile } from '../engine/types'
+import { DEFAULT_PROFILE } from '../engine/profiles'
 import { simulateYear, initializeGame, type GameState as EngineState, type YearResult } from '../engine/orchestrator'
 import { shuffleEvents, drawEvent, EVENTS_ENABLED, NO_EVENT } from '../engine/events'
 import { buildNarrative, type NarrativeResult } from '../engine/narrative'
@@ -25,6 +26,7 @@ type GameAction =
   | { type: 'SHOW_RESULTS' }
   | { type: 'NEXT_YEAR' }
   | { type: 'RESET' }
+  | { type: 'SELECT_PROFILE'; profile: HospitalProfile }
 
 // ── Console → ProgramState mapping ─────────────────────────────────
 
@@ -52,6 +54,9 @@ function consoleToProgramState(cs: OperationsConsoleState): ProgramState {
     surgicalExpansion: cs.surgicalExpansion !== 'none'
       ? { active: true, investmentLevel: cs.surgicalExpansion }
       : undefined,
+    maParticipation: cs.maParticipation,
+    commercialNegotiation: cs.commercialNegotiation,
+    admissionPosture: cs.admissionPosture,
   }
 }
 
@@ -69,6 +74,9 @@ export function defaultConsoleState(programs: ProgramState): OperationsConsoleSt
       : { active: false },
     supplyTier: programs.supplyTier,
     surgicalExpansion: programs.surgicalExpansion?.active ? programs.surgicalExpansion.investmentLevel : 'none',
+    maParticipation: programs.maParticipation ?? false,
+    commercialNegotiation: programs.commercialNegotiation ?? 'none',
+    admissionPosture: programs.admissionPosture ?? 'balanced',
   }
 }
 
@@ -100,11 +108,11 @@ function buildUIResult(engineResult: YearResult, prevResult: YearResult | null):
 
 // ── Initial state ──────────────────────────────────────────────────
 
-function createInitialGameState(): GameState {
+function createInitialGameState(profile: HospitalProfile = DEFAULT_PROFILE): GameState {
   const deck = EVENTS_ENABLED
     ? shuffleEvents()
     : [NO_EVENT, NO_EVENT, NO_EVENT, NO_EVENT, NO_EVENT]
-  const engineState = initializeGame(deck)
+  const engineState = initializeGame(profile, deck)
   return {
     phase: 'setup',
     engineState,
@@ -158,6 +166,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'RESET':
       return createInitialGameState()
 
+    case 'SELECT_PROFILE':
+      return createInitialGameState(action.profile)
+
     default:
       return state
   }
@@ -171,7 +182,7 @@ const GameContext = createContext<{
 } | null>(null)
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(gameReducer, null, createInitialGameState)
+  const [state, dispatch] = useReducer(gameReducer, null, () => createInitialGameState())
   return (
     <GameContext.Provider value={{ state, dispatch }}>
       {children}

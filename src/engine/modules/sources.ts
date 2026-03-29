@@ -72,6 +72,11 @@ export const sourcesModule: HospitalModule = {
       }
     }
 
+    // ── MA participation volume boost ─────────────────────────────
+    if (_controls.maParticipation) {
+      volume *= 1.08
+    }
+
     // ── Bed pressure reduces admissions ────────────────────────────
     const effectiveAdmissionRate = 1 - inputs.signals.bedPressure * BED_PRESSURE_ADMISSION_COEFFICIENT
     volume = volume * effectiveAdmissionRate

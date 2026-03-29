@@ -17,13 +17,15 @@ import { medSurgModule } from './modules/medsurg'
 import { orModule } from './modules/or'
 import { sourcesModule } from './modules/sources'
 import { aggregateFinance, type HospitalFinancials } from './modules/finance'
-import type { ExternalEvent, ProgramState } from './types'
+import type { ExternalEvent, ProgramState, HospitalProfile } from './types'
+import { DEFAULT_PROFILE } from './profiles'
 import { eventToModuleEffects } from './events'
 
 // ── Game State ──────────────────────────────────────────────────────
 
 export interface GameState {
   year: number                   // 1-5
+  profile: HospitalProfile
   moduleStates: {
     sources: SourcesState
     medsurg: MedSurgState
@@ -122,7 +124,9 @@ export function simulateYear(
 
   const medsurgControls = mapMedSurgControls(programs)
   const orControls = mapORControls(programs)
-  const sourcesControls: ModuleControls = {} // no player controls
+  const sourcesControls: ModuleControls = {
+    maParticipation: programs.maParticipation ?? false,
+  }
   const couplingSignals = computeCouplingSignals(programs)
 
   // ── Pass 1: Sources without bed pressure ────────────────────────
@@ -214,6 +218,19 @@ export function simulateYear(
     state.financials.cashReserves,
     (medsurgResult2.nextState as MedSurgState).drgAccuracy,
     medsurgResult2.outputs.patients.count,
+    state.profile.payerMix,
+    {
+      maParticipation: programs.maParticipation,
+      commercialNegotiation: programs.commercialNegotiation,
+      admissionPosture: programs.admissionPosture,
+      hospitalistCDI: programs.hospitalist?.cdiIntensity,
+      hospitalistDocTraining: programs.hospitalist?.documentationTraining,
+    },
+    {
+      dshPayment: state.profile.dshPayment,
+      costBasedMedicare: state.profile.costBasedMedicare,
+      baseOverhead: state.profile.baseOverhead,
+    },
   )
 
   // ── Readmissions for next year ──────────────────────────────────
@@ -227,6 +244,7 @@ export function simulateYear(
   // ── Build new game state ────────────────────────────────────────
   const newState: GameState = {
     year: state.year + 1,
+    profile: state.profile,
     moduleStates: {
       sources: sourcesResult2.nextState as SourcesState,
       medsurg: medsurgResult2.nextState as MedSurgState,
@@ -260,17 +278,29 @@ export function simulateYear(
 
 // ── Game initialization ─────────────────────────────────────────────
 
-const STARTING_CASH = 72_000_000 // $18M/quarter × 4
-
-export function initializeGame(eventDeck: ExternalEvent[]): GameState {
+export function initializeGame(profileOrDeck: HospitalProfile | ExternalEvent[], eventDeck?: ExternalEvent[]): GameState {
+  // Support both signatures: initializeGame(profile, deck) and initializeGame(deck)
+  let profile: HospitalProfile
+  let deck: ExternalEvent[]
+  if (Array.isArray(profileOrDeck)) {
+    profile = DEFAULT_PROFILE
+    deck = profileOrDeck
+  } else {
+    profile = profileOrDeck
+    deck = eventDeck!
+  }
   const sourcesState = sourcesModule.init({
     id: 'sources',
-    calibrationConstants: {},
+    calibrationConstants: { baseAnnualVolume: profile.baseAnnualVolume },
   }) as SourcesState
 
   const medsurgState = medSurgModule.init({
     id: 'medsurg',
-    calibrationConstants: {},
+    calibrationConstants: {
+      beds: profile.beds,
+      headcount: profile.headcount,
+      avgCompPerYear: profile.avgCompPerYear,
+    },
   }) as MedSurgState
 
   const orState = orModule.init({
@@ -282,6 +312,9 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
     nurseRatio: 5,
     compensationChange: 0,
     supplyTier: 'standard',
+    maParticipation: false,
+    commercialNegotiation: 'none',
+    admissionPosture: 'balanced',
   }
 
   // Compute initial financials by running a dry tick
@@ -317,9 +350,20 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
     [dryMedsurgResult.outputs.financials, dryOrResult.outputs.financials],
     dryMedsurgResult.outputs.signals,
     dryEvents,
-    STARTING_CASH,
+    profile.startingCash,
     (dryMedsurgResult.nextState as MedSurgState).drgAccuracy,
     dryMedsurgResult.outputs.patients.count,
+    profile.payerMix,
+    {
+      maParticipation: defaultPrograms.maParticipation,
+      commercialNegotiation: defaultPrograms.commercialNegotiation,
+      admissionPosture: defaultPrograms.admissionPosture,
+    },
+    {
+      dshPayment: profile.dshPayment,
+      costBasedMedicare: profile.costBasedMedicare,
+      baseOverhead: profile.baseOverhead,
+    },
   )
 
   // Seed readmissions at steady-state via full simulation iteration.
@@ -327,11 +371,12 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
   // at true equilibrium (no artificial volume ramp).
   let seedState: GameState = {
     year: 1,
+    profile,
     moduleStates: { sources: sourcesState, medsurg: medsurgState, or: orState },
     financials: initialFinancials,
     prevReadmissions: 0,
     programs: defaultPrograms,
-    eventDeck,
+    eventDeck: deck,
     history: [],
     gameOver: false,
   }
@@ -350,6 +395,7 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
 
   return {
     year: 1,
+    profile,
     moduleStates: {
       sources: sourcesState,
       medsurg: medsurgState,
@@ -358,7 +404,7 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
     financials: initialFinancials,
     prevReadmissions: steadyStateReadmissions,
     programs: defaultPrograms,
-    eventDeck,
+    eventDeck: deck,
     history: [],
     gameOver: false,
   }

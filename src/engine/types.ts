@@ -1,5 +1,25 @@
 // Shared types for the hospital simulator engine and UI.
 
+// ── Hospital profiles ─────────────────────────────────────────────
+
+export interface HospitalProfile {
+  id: 'suburban' | 'safety_net' | 'rural'
+  name: string
+  description: string
+  beds: number
+  payerMix: { medicare: number; commercial: number; medicaid: number; selfPay: number }
+  baseAnnualVolume: number
+  startingCash: number
+  baseOverhead: number
+  headcount: number
+  avgCompPerYear: number
+  dshPayment: number           // 0 for suburban/rural, $8M for safety net
+  costBasedMedicare: boolean   // true for rural CAH (101% of costs)
+}
+
+export type AdmissionPosture = 'conservative' | 'balanced' | 'aggressive'
+export type CommercialNegotiation = 'none' | 'standard' | 'aggressive'
+
 // ── Program types (used by orchestrator + UI) ──────────────────────
 
 export interface ProgramState {
@@ -9,6 +29,9 @@ export interface ProgramState {
   nurseRatio: number             // patients per nurse (4-8), always exists
   compensationChange: number     // percentage change this year
   supplyTier: 'budget' | 'standard' | 'premium'
+  maParticipation?: boolean
+  commercialNegotiation?: CommercialNegotiation
+  admissionPosture?: AdmissionPosture
 }
 
 export interface HospitalistProgram {
@@ -83,6 +106,9 @@ export interface OperationsConsoleState {
   dischargeCoordination: DischargeConsoleState
   supplyTier: 'budget' | 'standard' | 'premium'
   surgicalExpansion: 'none' | 'minor' | 'major'
+  maParticipation: boolean
+  commercialNegotiation: CommercialNegotiation
+  admissionPosture: AdmissionPosture
 }
 
 // Game phase for the UI state machine

@@ -64,6 +64,10 @@ export interface ProjectionDiff {
     expensesTotal: Delta
     margin: Delta
   }
+  payer: {
+    observationRevenue: Delta
+    cmsAdjustment: Delta
+  }
   departments: {
     medsurg: DepartmentMargin
     or: DepartmentMargin
@@ -211,6 +215,17 @@ function buildProjectionDiff(
     margin: makeDelta(bFin.margin, pFin.margin),
   }
 
+  const payer = {
+    observationRevenue: makeDelta(
+      bFin.observationRevenue ?? 0,
+      pFin.observationRevenue ?? 0,
+    ),
+    cmsAdjustment: makeDelta(
+      bFin.cmsAdjustment ?? 0,
+      pFin.cmsAdjustment ?? 0,
+    ),
+  }
+
   // Feedback loops
   const projectedReadmissions = Math.round(
     projected.moduleOutputs.medsurg.patients.count * pMs.readmissionRate
@@ -306,6 +321,24 @@ function buildProjectionDiff(
       direction: deltaDirection(revD.delta, true),
     },
     {
+      id: 'obs-split',
+      label: 'Observation',
+      before: (bFin.observationRevenue ?? 0) / 1_000_000,
+      after: (pFin.observationRevenue ?? 0) / 1_000_000,
+      delta: ((pFin.observationRevenue ?? 0) - (bFin.observationRevenue ?? 0)) / 1_000_000,
+      unit: '$M',
+      direction: deltaDirection(((pFin.observationRevenue ?? 0) - (bFin.observationRevenue ?? 0)), false),
+    },
+    {
+      id: 'cms-adj',
+      label: 'CMS Adjust',
+      before: (bFin.cmsAdjustment ?? 0) / 1_000_000,
+      after: (pFin.cmsAdjustment ?? 0) / 1_000_000,
+      delta: ((pFin.cmsAdjustment ?? 0) - (bFin.cmsAdjustment ?? 0)) / 1_000_000,
+      unit: '$M',
+      direction: deltaDirection(((pFin.cmsAdjustment ?? 0) - (bFin.cmsAdjustment ?? 0)), true),
+    },
+    {
       id: 'expenses',
       label: 'Expenses',
       before: expD.before / 1_000_000,
@@ -329,6 +362,7 @@ function buildProjectionDiff(
     volume,
     signals,
     financials,
+    payer,
     departments: buildDepartments(projected),
     feedbackLoops,
     causalChain,
@@ -413,6 +447,17 @@ export function buildResultsDiff(
     margin: makeDelta(pFin.margin, cFin.margin),
   }
 
+  const payer = {
+    observationRevenue: makeDelta(
+      pFin.observationRevenue ?? 0,
+      cFin.observationRevenue ?? 0,
+    ),
+    cmsAdjustment: makeDelta(
+      pFin.cmsAdjustment ?? 0,
+      cFin.cmsAdjustment ?? 0,
+    ),
+  }
+
   // Feedback loops (actual, not projected)
   const prevReadmissions = Math.round(prevVolume * prevMs.readmissionRate)
   const currReadmissions = Math.round(currVolume * currMs.readmissionRate)
@@ -468,6 +513,8 @@ export function buildResultsDiff(
     { id: 'bed-pressure', label: 'Bed Pressure', before: bpD.before, after: bpD.after, delta: bpD.delta, unit: '', direction: deltaDirection(bpD.delta, false) },
     { id: 'volume', label: 'Volume', ...volume, unit: 'patients', direction: deltaDirection(volume.delta, true) },
     { id: 'revenue', label: 'Revenue', before: revD.before / 1e6, after: revD.after / 1e6, delta: revD.delta / 1e6, unit: '$M', direction: deltaDirection(revD.delta, true) },
+    { id: 'obs-split', label: 'Observation', before: (pFin.observationRevenue ?? 0) / 1e6, after: (cFin.observationRevenue ?? 0) / 1e6, delta: ((cFin.observationRevenue ?? 0) - (pFin.observationRevenue ?? 0)) / 1e6, unit: '$M', direction: deltaDirection(((cFin.observationRevenue ?? 0) - (pFin.observationRevenue ?? 0)), false) },
+    { id: 'cms-adj', label: 'CMS Adjust', before: (pFin.cmsAdjustment ?? 0) / 1e6, after: (cFin.cmsAdjustment ?? 0) / 1e6, delta: ((cFin.cmsAdjustment ?? 0) - (pFin.cmsAdjustment ?? 0)) / 1e6, unit: '$M', direction: deltaDirection(((cFin.cmsAdjustment ?? 0) - (pFin.cmsAdjustment ?? 0)), true) },
     { id: 'expenses', label: 'Expenses', before: expD.before / 1e6, after: expD.after / 1e6, delta: expD.delta / 1e6, unit: '$M', direction: deltaDirection(expD.delta, false) },
     { id: 'margin', label: 'Margin', before: mD.before * 100, after: mD.after * 100, delta: mD.delta * 100, unit: 'pp', direction: deltaDirection(mD.delta, true) },
   ]
@@ -476,6 +523,7 @@ export function buildResultsDiff(
     volume,
     signals,
     financials,
+    payer,
     departments: buildDepartments(currentResult),
     feedbackLoops,
     causalChain,
