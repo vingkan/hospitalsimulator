@@ -38,15 +38,15 @@ export function computeFinancial(
   let programSubsidyMod = 0
 
   for (const fx of additionalEffects) {
-    if (fx.medicareRateModifier) medicareRateMod += fx.medicareRateModifier
-    if (fx.commercialRateModifier) commercialRateMod += fx.commercialRateModifier
-    if (fx.commercialVolumeModifier) commercialVolumeMod += fx.commercialVolumeModifier
-    if (fx.laborCostModifier) laborCostMod += fx.laborCostModifier
-    if (fx.supplyCostModifier) supplyCostMod += fx.supplyCostModifier
-    if (fx.overheadModifier) overheadMod += fx.overheadModifier
-    if (fx.capitalExpenditure) capitalExpenditure += fx.capitalExpenditure
-    if (fx.depreciationModifier) depreciationMod += fx.depreciationModifier
-    if (fx.programSubsidy) programSubsidyMod += fx.programSubsidy
+    if (fx.medicareRateModifier != null) medicareRateMod += fx.medicareRateModifier
+    if (fx.commercialRateModifier != null) commercialRateMod += fx.commercialRateModifier
+    if (fx.commercialVolumeModifier != null) commercialVolumeMod += fx.commercialVolumeModifier
+    if (fx.laborCostModifier != null) laborCostMod += fx.laborCostModifier
+    if (fx.supplyCostModifier != null) supplyCostMod += fx.supplyCostModifier
+    if (fx.overheadModifier != null) overheadMod += fx.overheadModifier
+    if (fx.capitalExpenditure != null) capitalExpenditure += fx.capitalExpenditure
+    if (fx.depreciationModifier != null) depreciationMod += fx.depreciationModifier
+    if (fx.programSubsidy != null) programSubsidyMod += fx.programSubsidy
   }
 
   // Revenue: medical cases by payer
@@ -122,7 +122,8 @@ export function computeFinancial(
       labor: {
         amount: laborCost,
         headcount: prevFinancial.expenses.labor.headcount,
-        avgCompPerQuarter: prevFinancial.expenses.labor.avgCompPerQuarter * compMultiplier,
+        // Don't compound: use the starting avg comp, not the previously multiplied value
+        avgCompPerQuarter: prevFinancial.expenses.labor.avgCompPerQuarter,
         overtimeCost,
       },
       supplies: {

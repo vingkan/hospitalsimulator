@@ -11,6 +11,7 @@ import {
   READMISSION_SENSITIVITY,
   SURGICAL_CANCEL_THRESHOLD,
   SURGICAL_FRACTION,
+  STARTING_LOS,
   programQualityScore,
 } from './constants'
 
@@ -80,11 +81,13 @@ export function computeOperational(
 
   // Add any additional LOS effects (from events, pending)
   for (const fx of additionalEffects) {
-    if (fx.losModifier) losModifiers.push(fx.losModifier)
+    if (fx.losModifier != null) losModifiers.push(fx.losModifier)
   }
 
+  // Use STARTING LOS as the base, not previous quarter's LOS.
+  // Program modifiers are absolute reductions from baseline, not compounding deltas.
   const lengthOfStay = composeEffects(
-    state.history.length === 0 ? prev.lengthOfStay : prev.lengthOfStay,
+    STARTING_LOS,
     losModifiers,
     DOMAIN_BOUNDS.lengthOfStay
   )
@@ -101,7 +104,7 @@ export function computeOperational(
 
   const qualityModifiers: number[] = []
   for (const fx of additionalEffects) {
-    if (fx.qualityModifier) qualityModifiers.push(fx.qualityModifier)
+    if (fx.qualityModifier != null) qualityModifiers.push(fx.qualityModifier)
   }
 
   const qualityScore = composeEffects(qualityBase, qualityModifiers, DOMAIN_BOUNDS.qualityScore)
@@ -122,7 +125,7 @@ export function computeOperational(
 
   const drgModifiers: number[] = []
   for (const fx of additionalEffects) {
-    if (fx.drgAccuracyModifier) drgModifiers.push(fx.drgAccuracyModifier)
+    if (fx.drgAccuracyModifier != null) drgModifiers.push(fx.drgAccuracyModifier)
   }
 
   const drgAccuracy = composeEffects(drgBase, drgModifiers, DOMAIN_BOUNDS.drgAccuracy)
@@ -131,7 +134,7 @@ export function computeOperational(
   const readmissionBase = READMISSION_BASE - qualityScore * READMISSION_SENSITIVITY
   const readmissionModifiers: number[] = []
   for (const fx of additionalEffects) {
-    if (fx.readmissionModifier) readmissionModifiers.push(fx.readmissionModifier)
+    if (fx.readmissionModifier != null) readmissionModifiers.push(fx.readmissionModifier)
   }
   if (programs.dischargeCoordination?.active) {
     readmissionModifiers.push(programs.dischargeCoordination.postAcutePartnerships ? -0.02 : -0.01)
@@ -146,7 +149,7 @@ export function computeOperational(
   let totalVolume = prev.dischargeRate
   let volumeModifier = 1.0
   for (const fx of additionalEffects) {
-    if (fx.volumeModifier) volumeModifier += fx.volumeModifier
+    if (fx.volumeModifier != null) volumeModifier += fx.volumeModifier
   }
   // Quality reputation effect
   if (qualityScore > 70) volumeModifier += 0.05

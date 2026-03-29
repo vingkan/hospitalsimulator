@@ -102,12 +102,17 @@ export function EndgameScreen() {
   )
 }
 
+const COLOR_MAP: Record<string, { bg: string; text: string }> = {
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  amber: { bg: 'bg-amber-50', text: 'text-amber-700' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-700' },
+}
+
 function MetricBox({ label, value, color }: { label: string; value: string; color: string }) {
-  const bgClass = `bg-${color}-50`
-  const textClass = `text-${color}-700`
+  const colors = COLOR_MAP[color] ?? COLOR_MAP.amber
   return (
-    <div className={`${bgClass} rounded-xl p-4 text-center`}>
-      <p className={`text-[36px] font-bold ${textClass}`}>{value}</p>
+    <div className={`${colors.bg} rounded-xl p-4 text-center`}>
+      <p className={`text-[36px] font-bold ${colors.text}`}>{value}</p>
       <p className="text-[18px] text-slate-500">{label}</p>
     </div>
   )

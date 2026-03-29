@@ -16,13 +16,11 @@ function App() {
     return () => window.removeEventListener('hashchange', handleHash)
   }, [])
 
-  if (page === 'guide') {
-    return <GuidePage />
-  }
-
+  // GameProvider wraps both pages so game state persists when
+  // the facilitator navigates to/from the guide mid-game
   return (
     <GameProvider>
-      <GamePage />
+      {page === 'guide' ? <GuidePage /> : <GamePage />}
     </GameProvider>
   )
 }
