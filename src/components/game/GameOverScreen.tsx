@@ -3,7 +3,7 @@ import { Button } from '../ui/Button'
 
 export function GameOverScreen() {
   const { state, dispatch } = useGame()
-  const history = state.hospitalState.history
+  const history = state.engineState.history
   const lastResult = history[history.length - 1]
 
   return (
@@ -13,7 +13,7 @@ export function GameOverScreen() {
       </h1>
 
       <p className="text-[22px] text-center mb-8" style={{ color: 'var(--text-muted)' }}>
-        Cash reserves hit zero in Quarter {lastResult?.quarter ?? '?'}.
+        Cash reserves hit zero in Year {lastResult?.year ?? '?'}.
         The hospital could no longer meet its obligations.
       </p>
 
@@ -25,13 +25,11 @@ export function GameOverScreen() {
           <div className="space-y-2">
             {history.map((r, i) => (
               <div key={i} className="text-[16px]">
-                <span className="font-bold" style={{ fontFamily: 'var(--font-display)' }}>Q{r.quarter}:</span>{' '}
+                <span className="font-bold" style={{ fontFamily: 'var(--font-display)' }}>Y{r.year}:</span>{' '}
                 <span style={{ fontFamily: 'var(--font-data)', color: 'var(--crisis)' }}>
-                  Margin {(r.state.financial.margin * 100).toFixed(1)}%
+                  Margin {(r.financials.margin * 100).toFixed(1)}%
                 </span>
-                {r.operationalHighlights[0] && (
-                  <span style={{ color: 'var(--text-muted)' }}> — {r.operationalHighlights[0]}</span>
-                )}
+                <span style={{ color: 'var(--text-muted)' }}> — Event: {r.event.title}</span>
               </div>
             ))}
           </div>

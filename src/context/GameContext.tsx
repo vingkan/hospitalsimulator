@@ -1,69 +1,156 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
-import type { HospitalState, OperationsConsoleState, QuarterResult, GamePhase } from '../engine/types'
-import { createInitialState } from '../engine/constants'
+import type { OperationsConsoleState, ProgramState, GamePhase } from '../engine/types'
+import { simulateYear, initializeGame, type GameState as EngineState, type YearResult } from '../engine/orchestrator'
 import { shuffleEvents, drawEvent } from '../engine/events'
-import { simulateQuarter, defaultConsoleState } from '../engine/simulate'
+import { buildNarrative, type NarrativeResult } from '../engine/narrative'
+
+// ── UI result type (engine result + narrative) ─────────────────────
+
+export interface UIYearResult extends NarrativeResult {
+  year: number
+  engineResult: YearResult
+}
+
+// ── Game context state ─────────────────────────────────────────────
 
 interface GameState {
   phase: GamePhase
-  hospitalState: HospitalState
-  currentResult: QuarterResult | null
+  engineState: EngineState
+  currentResult: UIYearResult | null
 }
 
 type GameAction =
   | { type: 'START_GAME' }
-  | { type: 'SUBMIT_CONSOLE'; consoleState: OperationsConsoleState }
+  | { type: 'SUBMIT_CONTROLS'; consoleState: OperationsConsoleState }
   | { type: 'SHOW_RESULTS' }
-  | { type: 'NEXT_QUARTER' }
+  | { type: 'NEXT_YEAR' }
   | { type: 'RESET' }
+
+// ── Console → ProgramState mapping ─────────────────────────────────
+
+function consoleToProgramState(cs: OperationsConsoleState): ProgramState {
+  return {
+    nurseRatio: cs.nurseRatio,
+    compensationChange: cs.compensationChange,
+    supplyTier: cs.supplyTier,
+    hospitalist: cs.hospitalist.active
+      ? {
+          active: true,
+          workforce: cs.hospitalist.workforce,
+          cdiIntensity: cs.hospitalist.cdiIntensity,
+          documentationTraining: cs.hospitalist.documentationTraining,
+          effectiveness: 1.0,
+        }
+      : undefined,
+    dischargeCoordination: cs.dischargeCoordination.active
+      ? {
+          active: true,
+          model: cs.dischargeCoordination.model,
+          postAcutePartnerships: cs.dischargeCoordination.postAcutePartnerships,
+        }
+      : undefined,
+    surgicalExpansion: cs.surgicalExpansion !== 'none'
+      ? { active: true, investmentLevel: cs.surgicalExpansion }
+      : undefined,
+  }
+}
+
+// ── Default console state from ProgramState ────────────────────────
+
+export function defaultConsoleState(programs: ProgramState): OperationsConsoleState {
+  return {
+    nurseRatio: programs.nurseRatio,
+    compensationChange: programs.compensationChange,
+    hospitalist: programs.hospitalist?.active
+      ? { active: true, workforce: programs.hospitalist.workforce, cdiIntensity: programs.hospitalist.cdiIntensity, documentationTraining: programs.hospitalist.documentationTraining }
+      : { active: false },
+    dischargeCoordination: programs.dischargeCoordination?.active
+      ? { active: true, model: programs.dischargeCoordination.model, postAcutePartnerships: programs.dischargeCoordination.postAcutePartnerships }
+      : { active: false },
+    supplyTier: programs.supplyTier,
+    surgicalExpansion: programs.surgicalExpansion?.active ? programs.surgicalExpansion.investmentLevel : 'none',
+  }
+}
+
+// ── Narrative from YearResult ──────────────────────────────────────
+
+function buildUIResult(engineResult: YearResult, prevResult: YearResult | null): UIYearResult {
+  const prev = prevResult
+    ? {
+        financials: prevResult.financials,
+        medsurg: prevResult.moduleOutputs.medsurg,
+        or: prevResult.moduleOutputs.or,
+      }
+    : null
+
+  const current = {
+    financials: engineResult.financials,
+    medsurg: engineResult.moduleOutputs.medsurg,
+    or: engineResult.moduleOutputs.or,
+  }
+
+  const narrativeResult = buildNarrative(prev, current, engineResult.event.title)
+
+  return {
+    year: engineResult.year,
+    engineResult,
+    ...narrativeResult,
+  }
+}
+
+// ── Initial state ──────────────────────────────────────────────────
 
 function createInitialGameState(): GameState {
   const deck = shuffleEvents()
-  const hospitalState = createInitialState(deck)
+  const engineState = initializeGame(deck)
   return {
     phase: 'setup',
-    hospitalState,
+    engineState,
     currentResult: null,
   }
 }
 
+// ── Reducer ────────────────────────────────────────────────────────
+
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_GAME':
-      return {
-        ...state,
-        phase: 'decision',
-      }
+      return { ...state, phase: 'decision' }
 
-    case 'SUBMIT_CONSOLE': {
+    case 'SUBMIT_CONTROLS': {
+      const programs = consoleToProgramState(action.consoleState)
       const event = drawEvent(
-        state.hospitalState.eventDeck,
-        state.hospitalState.quarter - 1
+        state.engineState.eventDeck,
+        state.engineState.year - 1,
       )
-      const result = simulateQuarter(state.hospitalState, action.consoleState, event)
+      const engineResult = simulateYear(state.engineState, programs, event)
+
+      // Find previous year's result for narrative comparison
+      const prevResult = state.engineState.history.length > 0
+        ? state.engineState.history[state.engineState.history.length - 1]
+        : null
+
+      const uiResult = buildUIResult(engineResult, prevResult)
+
       return {
         ...state,
         phase: 'computing',
-        hospitalState: result.state,
-        currentResult: result,
+        engineState: engineResult.state,
+        currentResult: uiResult,
       }
     }
 
-    case 'SHOW_RESULTS': {
+    case 'SHOW_RESULTS':
       return {
         ...state,
-        phase: state.hospitalState.gameOver ? 'gameover' : 'results',
+        phase: state.engineState.gameOver ? 'gameover' : 'results',
       }
-    }
 
-    case 'NEXT_QUARTER': {
-      if (state.hospitalState.quarter > 4) {
+    case 'NEXT_YEAR': {
+      if (state.engineState.year > 5) {
         return { ...state, phase: 'endgame' }
       }
-      return {
-        ...state,
-        phase: 'decision',
-      }
+      return { ...state, phase: 'decision' }
     }
 
     case 'RESET':
@@ -73,6 +160,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return state
   }
 }
+
+// ── Context ────────────────────────────────────────────────────────
 
 const GameContext = createContext<{
   state: GameState
@@ -93,5 +182,3 @@ export function useGame() {
   if (!ctx) throw new Error('useGame must be used within GameProvider')
   return ctx
 }
-
-export { defaultConsoleState }

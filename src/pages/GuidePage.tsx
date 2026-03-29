@@ -10,30 +10,33 @@ export function GuidePage() {
         <ul className="space-y-2 text-[16px]" style={{ color: 'var(--text-muted)' }}>
           <li>Open the game on the 80" TV or share screen via Zoom</li>
           <li>8-12 team members: in-person + remote. Cross-functional works best.</li>
-          <li>Plan for 45-75 minutes total</li>
+          <li>Plan for 60-90 minutes total (5 years = more discussion time)</li>
           <li>The facilitator drives the laptop. The team discusses and decides together.</li>
           <li>There are no wrong answers. The goal is building intuition, not winning.</li>
         </ul>
       </GuideSection>
 
-      <GuideSection title="Per-Quarter Focus Areas">
+      <GuideSection title="Per-Year Focus Areas">
         <div className="space-y-3">
-          <QuarterGuide quarter={1} focus="Staffing & Hospitalist Program"
-            prompt="Focus the team on staffing decisions and whether to start a hospitalist program. Ask: 'Should we invest $500K/quarter in hospitalists? What workforce model? What CDI approach?' This quarter teaches the relationship between staffing, quality, and indirect revenue."
+          <YearGuide year={1} focus="Staffing & Hospitalist Program"
+            prompt="Focus the team on staffing decisions and whether to start a hospitalist program. Ask: 'Should we invest $2M/year in hospitalists? What workforce model? What CDI approach?' This year teaches the relationship between staffing, quality, and indirect revenue."
           />
-          <QuarterGuide quarter={2} focus="Discharge & Surgical Expansion"
-            prompt="Now that they've seen Q1 results, guide them toward discharge coordination and surgical expansion. Ask: 'Did the hospitalist investment pay off? Where are the bottlenecks?' This quarter teaches throughput and capacity management."
+          <YearGuide year={2} focus="Discharge & Surgical Expansion"
+            prompt="Now that they've seen Year 1 results, guide them toward discharge coordination and surgical expansion. Ask: 'Did the hospitalist investment pay off? Where are the bottlenecks?' This year teaches throughput and capacity management."
           />
-          <QuarterGuide quarter={3} focus="Optimization"
-            prompt="Challenge them to optimize. They've seen two quarters of results. Ask: 'What's working? What's not? If you could change one thing, what would it be?' This quarter teaches iteration and the cost of switching strategies."
+          <YearGuide year={3} focus="Optimization & Resilience"
+            prompt="Challenge them to optimize. They've seen two years of results and an external event. Ask: 'What's working? What's not? How do you build resilience against the next shock?' This year teaches iteration and the cost of switching strategies."
           />
-          <QuarterGuide quarter={4} focus="Final Adjustments"
-            prompt="Final adjustments. Ask: 'What do you wish you'd done differently in Q1? What did the game teach you about hospital economics that you didn't know before?' Build the bridge to product decisions."
+          <YearGuide year={4} focus="Strategic Positioning"
+            prompt="With one year left, push long-term thinking. Ask: 'Are you building a sustainable hospital or just surviving? What happens in Year 6 if you keep this trajectory?' This year teaches the tension between short-term fixes and long-term strategy."
+          />
+          <YearGuide year={5} focus="Final Adjustments"
+            prompt="Final adjustments. Ask: 'What do you wish you'd done differently in Year 1? What did the game teach you about hospital economics that you didn't know before?' Build the bridge to product decisions."
           />
         </div>
       </GuideSection>
 
-      <GuideSection title="How to Facilitate Each Quarter">
+      <GuideSection title="How to Facilitate Each Year">
         <div className="space-y-3">
           <StepCard step="1" title="Review the Hospital Schematic (~2 min)"
             body="'Let's look at where our hospital stands.' Point at the color-coded wards: 'Wing A is amber at 78% occupancy. ICU is red at 92%. What does that tell us?' Point at staffing, quality, readmission badges." />
@@ -90,11 +93,11 @@ export function GuidePage() {
             'Surgical cases: highest margin category',
           ]} />
           <CheatCard title="The Death Spiral" items={[
-            'Cut costs → quality drops',
-            'Quality drops → readmissions rise',
-            'Readmissions → Medicare penalties',
-            'Penalties → revenue drops',
-            'Revenue drops → cut more costs...',
+            'Cut costs \u2192 quality drops',
+            'Quality drops \u2192 readmissions rise',
+            'Readmissions \u2192 Medicare penalties',
+            'Penalties \u2192 revenue drops',
+            'Revenue drops \u2192 cut more costs...',
           ]} />
         </div>
       </GuideSection>
@@ -111,11 +114,11 @@ function GuideSection({ title, children }: { title: string; children: React.Reac
   )
 }
 
-function QuarterGuide({ quarter, focus, prompt }: { quarter: number; focus: string; prompt: string }) {
+function YearGuide({ year, focus, prompt }: { year: number; focus: string; prompt: string }) {
   return (
     <div className="rounded-xl p-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <div className="flex items-baseline gap-3 mb-2">
-        <span style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[18px] font-bold">Q{quarter}</span>
+        <span style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[18px] font-bold">Y{year}</span>
         <span className="font-semibold text-[16px]">{focus}</span>
       </div>
       <p className="text-[14px]" style={{ color: 'var(--text-muted)' }}>{prompt}</p>

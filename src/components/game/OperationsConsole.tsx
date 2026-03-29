@@ -1,33 +1,15 @@
 import { useState, useCallback } from 'react'
-import type { HospitalState, OperationsConsoleState, HospitalistConsoleState, DischargeConsoleState } from '../../engine/types'
+import type { ProgramState, OperationsConsoleState, HospitalistConsoleState, DischargeConsoleState } from '../../engine/types'
+import { defaultConsoleState } from '../../context/GameContext'
 import { Button } from '../ui/Button'
 
 interface Props {
-  hospitalState: HospitalState
+  programs: ProgramState
   onSubmit: (consoleState: OperationsConsoleState) => void
 }
 
-/** Build initial console state from current programs */
-function initFromPrograms(state: HospitalState): OperationsConsoleState {
-  const p = state.programs
-  return {
-    nurseRatio: p.nurseRatio,
-    compensationChange: p.compensationChange,
-    headcountDelta: 0,
-    hospitalist: p.hospitalist?.active
-      ? { active: true, workforce: p.hospitalist.workforce, cdiIntensity: p.hospitalist.cdiIntensity, documentationTraining: p.hospitalist.documentationTraining }
-      : { active: false },
-    dischargeCoordination: p.dischargeCoordination?.active
-      ? { active: true, model: p.dischargeCoordination.model, postAcutePartnerships: p.dischargeCoordination.postAcutePartnerships }
-      : { active: false },
-    supplyTier: p.supplyTier,
-    surgicalExpansion: p.surgicalExpansion?.active ? p.surgicalExpansion.investmentLevel : 'none',
-    bedChange: 'none',
-  }
-}
-
-export function OperationsConsole({ hospitalState, onSubmit }: Props) {
-  const [cs, setCs] = useState<OperationsConsoleState>(() => initFromPrograms(hospitalState))
+export function OperationsConsole({ programs, onSubmit }: Props) {
+  const [cs, setCs] = useState<OperationsConsoleState>(() => defaultConsoleState(programs))
 
   const update = useCallback(<K extends keyof OperationsConsoleState>(key: K, value: OperationsConsoleState[K]) => {
     setCs(prev => ({ ...prev, [key]: value }))
@@ -50,9 +32,6 @@ export function OperationsConsole({ hospitalState, onSubmit }: Props) {
           <SliderControl label="Compensation" value={cs.compensationChange} min={-5} max={10} step={1}
             format={v => `${v > 0 ? '+' : ''}${v}%`}
             onChange={v => update('compensationChange', v)} />
-          <SliderControl label="Headcount" value={cs.headcountDelta} min={-100} max={100} step={25}
-            format={v => v === 0 ? 'No change' : `${v > 0 ? '+' : ''}${v} FTEs`}
-            onChange={v => update('headcountDelta', v)} />
         </Section>
 
         {/* Programs */}
@@ -107,18 +86,14 @@ export function OperationsConsole({ hospitalState, onSubmit }: Props) {
             value={cs.supplyTier}
             onChange={v => update('supplyTier', v as 'budget' | 'standard' | 'premium')} />
           <SegmentControl label="Surgical Expansion"
-            options={[{ value: 'none', label: 'None' }, { value: 'minor', label: 'Minor ($1M)' }, { value: 'major', label: 'Major ($4M)' }]}
+            options={[{ value: 'none', label: 'None' }, { value: 'minor', label: 'Minor ($4M)' }, { value: 'major', label: 'Major ($16M)' }]}
             value={cs.surgicalExpansion}
             onChange={v => update('surgicalExpansion', v as 'none' | 'minor' | 'major')} />
-          <SegmentControl label="Bed Management"
-            options={[{ value: 'none', label: 'No change' }, { value: 'add', label: 'Add (+20)' }, { value: 'close', label: 'Close (-20)' }]}
-            value={cs.bedChange}
-            onChange={v => update('bedChange', v as 'none' | 'add' | 'close')} />
         </Section>
       </div>
 
       <Button size="large" className="w-full mt-4" onClick={() => onSubmit(cs)}>
-        Advance Quarter
+        Advance Year
       </Button>
     </div>
   )

@@ -6,7 +6,7 @@ import type { OperationsConsoleState } from '../../engine/types'
 
 export function DecisionPhase() {
   const { state, dispatch } = useGame()
-  const fin = state.hospitalState.financial
+  const fin = state.engineState.financials
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -14,7 +14,7 @@ export function DecisionPhase() {
       <div className="flex items-center justify-between px-6 py-3" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-4">
           <span style={{ fontFamily: 'var(--font-display)' }} className="text-[28px] font-bold">
-            Quarter {state.hospitalState.quarter}
+            Year {state.engineState.year}
           </span>
           <span className="text-[16px]" style={{ color: 'var(--text-muted)' }}>
             Riverside General Hospital
@@ -24,15 +24,16 @@ export function DecisionPhase() {
           <HealthBadge label="MARGIN" value={`${(fin.margin * 100).toFixed(1)}%`}
             level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
           <HealthBadge label="CASH" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
-            level={fin.cashReserves > 10_000_000 ? 'healthy' : fin.cashReserves > 5_000_000 ? 'warning' : 'crisis'} />
+            level={fin.cashReserves > 30_000_000 ? 'healthy' : fin.cashReserves > 15_000_000 ? 'warning' : 'crisis'} />
         </div>
       </div>
 
       {/* Hospital schematic (top ~45%) */}
       <div className="px-4 pt-3 pb-2" style={{ flex: '0 0 auto' }}>
         <HospitalSchematic
-          operational={state.hospitalState.operational}
-          programs={state.hospitalState.programs}
+          medsurgState={state.engineState.moduleStates.medsurg}
+          orState={state.engineState.moduleStates.or}
+          programs={state.engineState.programs}
         />
       </div>
 
@@ -40,14 +41,14 @@ export function DecisionPhase() {
       <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-4 min-h-0">
         <div className="min-h-0 overflow-hidden">
           <OperationsConsole
-            hospitalState={state.hospitalState}
+            programs={state.engineState.programs}
             onSubmit={(consoleState: OperationsConsoleState) =>
-              dispatch({ type: 'SUBMIT_CONSOLE', consoleState })
+              dispatch({ type: 'SUBMIT_CONTROLS', consoleState })
             }
           />
         </div>
         <div className="min-h-0 overflow-hidden">
-          <FinancialPanel financial={state.hospitalState.financial} />
+          <FinancialPanel financials={state.engineState.financials} />
         </div>
       </div>
     </div>

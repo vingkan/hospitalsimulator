@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { composeEffects, getOvertimeMultiplier } from '../operational'
-import { DOMAIN_BOUNDS } from '../constants'
+import { composeEffects, getOvertimeMultiplier, DOMAIN_BOUNDS } from '../utils'
 
 describe('composeEffects', () => {
   it('returns base value when no modifiers', () => {

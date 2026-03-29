@@ -26,9 +26,9 @@ const DEBRIEF_PROMPTS = [
 
 export function EndgameScreen() {
   const { state, dispatch } = useGame()
-  const fin = state.hospitalState.financial
-  const ops = state.hospitalState.operational
-  const history = state.hospitalState.history
+  const fin = state.engineState.financials
+  const ms = state.engineState.moduleStates.medsurg
+  const history = state.engineState.history
 
   const nationalMedianMargin = 0.02
   const beat = fin.margin > nationalMedianMargin
@@ -36,7 +36,7 @@ export function EndgameScreen() {
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
       <h1 style={{ fontFamily: 'var(--font-display)' }} className="text-[48px] font-bold text-center mb-2">
-        Riverside General: Year End
+        Riverside General: 5-Year Review
       </h1>
       <p style={{ fontFamily: 'var(--font-display)' }} className={`text-[32px] font-bold text-center mb-8`}>
         <span style={{ color: fin.margin > 0.05 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)' }}>
@@ -51,35 +51,32 @@ export function EndgameScreen() {
         <MetricBox label="Final Margin" value={`${(fin.margin * 100).toFixed(1)}%`}
           level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
         <MetricBox label="Cash Reserves" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
-          level={fin.cashReserves > 10_000_000 ? 'healthy' : 'warning'} />
-        <MetricBox label="Quality Score" value={`${ops.qualityScore.toFixed(0)}/100`}
-          level={ops.qualityScore > 70 ? 'healthy' : ops.qualityScore > 50 ? 'warning' : 'crisis'} />
+          level={fin.cashReserves > 30_000_000 ? 'healthy' : 'warning'} />
+        <MetricBox label="Quality Score" value={`${ms.qualityScore.toFixed(0)}/100`}
+          level={ms.qualityScore > 70 ? 'healthy' : ms.qualityScore > 50 ? 'warning' : 'crisis'} />
         <MetricBox label="vs National" value={beat ? 'Above Median' : 'Below Median'}
           level={beat ? 'healthy' : 'crisis'} />
       </div>
 
-      {/* Quarter-by-quarter summary */}
+      {/* Year-by-year summary */}
       <div className="rounded-xl p-6 mb-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[14px] font-semibold uppercase tracking-wider mb-4">
-          Quarter-by-Quarter
+          Year-by-Year
         </h3>
         <div className="space-y-3">
           {history.map((r, i) => (
             <div key={i} className="flex items-center gap-4 text-[18px]">
-              <span className="font-bold w-12" style={{ fontFamily: 'var(--font-display)' }}>Q{r.quarter}</span>
+              <span className="font-bold w-16" style={{ fontFamily: 'var(--font-display)' }}>Y{r.year}</span>
               <span className="px-3 py-1 rounded" style={{
                 fontFamily: 'var(--font-data)',
-                background: r.state.financial.margin > 0.05 ? '#064E3B40' :
-                  r.state.financial.margin > 0 ? '#78350F40' : '#9F122340',
-                color: r.state.financial.margin > 0.05 ? 'var(--healthy)' :
-                  r.state.financial.margin > 0 ? 'var(--warning)' : 'var(--crisis)',
+                background: r.financials.margin > 0.05 ? '#064E3B40' :
+                  r.financials.margin > 0 ? '#78350F40' : '#9F122340',
+                color: r.financials.margin > 0.05 ? 'var(--healthy)' :
+                  r.financials.margin > 0 ? 'var(--warning)' : 'var(--crisis)',
               }}>
-                {(r.state.financial.margin * 100).toFixed(1)}% margin
+                {(r.financials.margin * 100).toFixed(1)}% margin
               </span>
               <span style={{ color: 'var(--text-muted)' }}>Event: {r.event.title}</span>
-              {r.operationalHighlights[0] && (
-                <span className="truncate" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>{r.operationalHighlights[0]}</span>
-              )}
             </div>
           ))}
         </div>

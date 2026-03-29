@@ -7,14 +7,14 @@ export function ResultsPhase() {
   const result = state.currentResult
   const [revealed, setRevealed] = useState(false)
 
-  const isQ4 = result && result.quarter === 4
-  const pauseDuration = isQ4 ? 3000 : 1000
+  const isFinalYear = result && result.year === 5
+  const pauseDuration = isFinalYear ? 3000 : 1000
 
   useEffect(() => {
     setRevealed(false)
     const timer = setTimeout(() => setRevealed(true), pauseDuration)
     return () => clearTimeout(timer)
-  }, [result?.quarter, pauseDuration])
+  }, [result?.year, pauseDuration])
 
   if (!result) return null
 
@@ -22,27 +22,26 @@ export function ResultsPhase() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <p className="text-[36px] animate-pulse" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-muted)' }}>
-          Computing Quarter {result.quarter}...
+          Computing Year {result.year}...
         </p>
       </div>
     )
   }
 
-  const fin = result.state.financial
-  const isFinalQuarter = result.quarter >= 4
+  const fin = result.engineResult.financials
 
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h2 style={{ fontFamily: 'var(--font-display)' }} className="text-[36px] font-bold">
-          Quarter {result.quarter} Results
+          Year {result.year} Results
         </h2>
         <div className="flex gap-3">
           <HealthBadge label="MARGIN" value={`${(fin.margin * 100).toFixed(1)}%`}
             level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
           <HealthBadge label="CASH" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
-            level={fin.cashReserves > 10_000_000 ? 'healthy' : fin.cashReserves > 5_000_000 ? 'warning' : 'crisis'} />
+            level={fin.cashReserves > 30_000_000 ? 'healthy' : fin.cashReserves > 15_000_000 ? 'warning' : 'crisis'} />
         </div>
       </div>
 
@@ -58,10 +57,10 @@ export function ResultsPhase() {
           External Event
         </p>
         <h3 style={{ fontFamily: 'var(--font-display)' }} className="text-[24px] font-bold mb-2">
-          {result.event.title}
+          {result.engineResult.event.title}
         </h3>
-        <p className="text-[16px] mb-2" style={{ color: 'var(--text-muted)' }}>{result.event.description}</p>
-        <p className="text-[13px] italic" style={{ color: 'var(--text-muted)' }}>Teaches: {result.event.teaches}</p>
+        <p className="text-[16px] mb-2" style={{ color: 'var(--text-muted)' }}>{result.engineResult.event.description}</p>
+        <p className="text-[13px] italic" style={{ color: 'var(--text-muted)' }}>Teaches: {result.engineResult.event.teaches}</p>
       </div>
 
       {/* Narrative sections */}
@@ -87,26 +86,24 @@ export function ResultsPhase() {
       </div>
 
       {/* Discussion prompt */}
-      {result.programs && (
-        <div className="rounded-xl p-5 mb-6" style={{
-          background: 'var(--surface)',
-          borderLeft: '3px solid var(--primary)',
-        }}>
-          <p style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[12px] font-semibold uppercase tracking-wider mb-2">
-            Discussion
-          </p>
-          <p className="text-[18px]" style={{ color: 'var(--text)' }}>
-            Why did that happen? What would you do differently?
-          </p>
-        </div>
-      )}
+      <div className="rounded-xl p-5 mb-6" style={{
+        background: 'var(--surface)',
+        borderLeft: '3px solid var(--primary)',
+      }}>
+        <p style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[12px] font-semibold uppercase tracking-wider mb-2">
+          Discussion
+        </p>
+        <p className="text-[18px]" style={{ color: 'var(--text)' }}>
+          Why did that happen? What would you do differently?
+        </p>
+      </div>
 
       <Button
         size="large"
         className="w-full"
-        onClick={() => dispatch({ type: 'NEXT_QUARTER' })}
+        onClick={() => dispatch({ type: 'NEXT_YEAR' })}
       >
-        {isFinalQuarter ? 'See Final Results' : `Continue to Quarter ${result.quarter + 1}`}
+        {isFinalYear ? 'See Final Results' : `Continue to Year ${result.year + 1}`}
       </Button>
     </div>
   )

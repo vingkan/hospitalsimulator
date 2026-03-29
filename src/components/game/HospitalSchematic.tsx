@@ -1,8 +1,11 @@
-import type { HospitalState } from '../../engine/types'
+import type { MedSurgState } from '../../engine/modules/medsurg'
+import type { ORState } from '../../engine/modules/or'
+import type { ProgramState } from '../../engine/types'
 
 interface Props {
-  operational: HospitalState['operational']
-  programs: HospitalState['programs']
+  medsurgState: MedSurgState
+  orState: ORState
+  programs: ProgramState
   reducedMotion?: boolean
 }
 
@@ -32,13 +35,11 @@ function staffingColor(ratio: number): string {
  * Shows ward occupancy, OR status, staffing, quality, and key indicators.
  * CSS transitions animate state changes (300ms ease-out).
  */
-export function HospitalSchematic({ operational, programs, reducedMotion }: Props) {
-  const ops = operational
+export function HospitalSchematic({ medsurgState, orState, programs, reducedMotion }: Props) {
   const transitionStyle = reducedMotion ? 'none' : 'fill 300ms ease-out, opacity 300ms ease-out'
 
   // Distribute total occupancy across wings proportionally
-  // (engine models hospital-wide, but we display per wing for visual interest)
-  const occupancy = ops.beds.occupancyRate
+  const occupancy = medsurgState.occupancyRate
   const wingOccupancies = [
     Math.min(1, occupancy * 1.1),   // Wing A: slightly above average
     Math.min(1, occupancy * 0.9),   // Wing B: slightly below
@@ -46,7 +47,8 @@ export function HospitalSchematic({ operational, programs, reducedMotion }: Prop
     Math.min(1, occupancy * 0.85),  // Wing C: slightly below
   ]
 
-  const orActive = Math.min(4, Math.round(4 * ops.surgical.casesCompleted / Math.max(1, ops.surgical.orCapacity)))
+  const orActive = Math.min(4, Math.round(4 * orState.utilization))
+  const orCases = Math.round(orState.orCapacity * orState.utilization)
   const edBoarding = occupancy > 0.95
 
   return (
@@ -108,7 +110,7 @@ export function HospitalSchematic({ operational, programs, reducedMotion }: Prop
         </text>
         <text x={730} y={135} textAnchor="middle"
           fontFamily="var(--font-data)" fontSize={11} fill="var(--text-muted)">
-          {ops.surgical.casesCompleted} cases
+          {orCases} cases/yr
         </text>
       </g>
 
@@ -218,9 +220,9 @@ export function HospitalSchematic({ operational, programs, reducedMotion }: Prop
         </text>
         <text x={907} y={143} textAnchor="middle"
           fontFamily="var(--font-data)" fontSize={22} fontWeight={700}
-          fill={qualityColor(ops.qualityScore)}
+          fill={qualityColor(medsurgState.qualityScore)}
           style={{ transition: transitionStyle }}>
-          {ops.qualityScore.toFixed(0)}
+          {medsurgState.qualityScore.toFixed(0)}
         </text>
       </g>
 
@@ -237,7 +239,7 @@ export function HospitalSchematic({ operational, programs, reducedMotion }: Prop
           fontFamily="var(--font-data)" fontSize={22} fontWeight={700}
           fill="var(--text)"
           style={{ transition: transitionStyle }}>
-          {(ops.drgAccuracy * 100).toFixed(0)}%
+          {(medsurgState.drgAccuracy * 100).toFixed(0)}%
         </text>
       </g>
 
@@ -252,9 +254,9 @@ export function HospitalSchematic({ operational, programs, reducedMotion }: Prop
         </text>
         <text x={907} y={290} textAnchor="middle"
           fontFamily="var(--font-data)" fontSize={20} fontWeight={700}
-          fill={ops.readmissionRate > 0.15 ? 'var(--crisis)' : ops.readmissionRate > 0.12 ? 'var(--warning)' : 'var(--healthy)'}
+          fill={medsurgState.readmissionRate > 0.15 ? 'var(--crisis)' : medsurgState.readmissionRate > 0.12 ? 'var(--warning)' : 'var(--healthy)'}
           style={{ transition: transitionStyle }}>
-          {(ops.readmissionRate * 100).toFixed(1)}%
+          {(medsurgState.readmissionRate * 100).toFixed(1)}%
         </text>
       </g>
     </svg>

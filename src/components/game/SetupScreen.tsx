@@ -3,8 +3,8 @@ import { Button } from '../ui/Button'
 
 export function SetupScreen() {
   const { state, dispatch } = useGame()
-  const ops = state.hospitalState.operational
-  const fin = state.hospitalState.financial
+  const ms = state.engineState.moduleStates.medsurg
+  const fin = state.engineState.financials
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 max-w-4xl mx-auto">
@@ -19,12 +19,12 @@ export function SetupScreen() {
             Operational Status
           </h2>
           <div className="space-y-2 text-[18px]">
-            <SetupMetric label="Beds" value={String(ops.beds.total)} />
-            <SetupMetric label="Occupancy" value={`${(ops.beds.occupancyRate * 100).toFixed(0)}%`} />
-            <SetupMetric label="Avg Length of Stay" value={`${ops.lengthOfStay.toFixed(1)} days`} />
-            <SetupMetric label="Quality Score" value={`${ops.qualityScore.toFixed(0)}/100`} />
-            <SetupMetric label="Nurse Ratio" value={`1:${state.hospitalState.programs.nurseRatio}`} />
-            <SetupMetric label="Readmission Rate" value={`${(ops.readmissionRate * 100).toFixed(1)}%`} />
+            <SetupMetric label="Beds" value={String(ms.beds)} />
+            <SetupMetric label="Occupancy" value={`${(ms.occupancyRate * 100).toFixed(0)}%`} />
+            <SetupMetric label="Avg Length of Stay" value={`${ms.lengthOfStay.toFixed(1)} days`} />
+            <SetupMetric label="Quality Score" value={`${ms.qualityScore.toFixed(0)}/100`} />
+            <SetupMetric label="Nurse Ratio" value={`1:${state.engineState.programs.nurseRatio}`} />
+            <SetupMetric label="Readmission Rate" value={`${(ms.readmissionRate * 100).toFixed(1)}%`} />
           </div>
         </div>
 
@@ -34,22 +34,22 @@ export function SetupScreen() {
           </h2>
           <div className="space-y-2 text-[18px]">
             <SetupMetric label="Cash Reserves" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`} />
-            <SetupMetric label="Revenue/Quarter" value={`$${(fin.revenue.total / 1_000_000).toFixed(1)}M`} />
-            <SetupMetric label="Expenses/Quarter" value={`$${(fin.expenses.total / 1_000_000).toFixed(1)}M`} />
+            <SetupMetric label="Revenue/Year" value={`$${(fin.revenue.total / 1_000_000).toFixed(1)}M`} />
+            <SetupMetric label="Expenses/Year" value={`$${(fin.expenses.total / 1_000_000).toFixed(1)}M`} />
             <SetupMetric label="Margin" value={`${(fin.margin * 100).toFixed(1)}%`} color={fin.margin > 0.03 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)'} />
-            <SetupMetric label="Headcount" value={`${fin.expenses.labor.headcount} FTEs`} />
+            <SetupMetric label="Headcount" value={`${ms.headcount} FTEs`} />
           </div>
         </div>
       </div>
 
       <p className="text-center mb-8 max-w-2xl text-[18px]" style={{ color: 'var(--text-muted)' }}>
-        You are the leadership team of Riverside General. Over the next 4 quarters,
+        You are the leadership team of Riverside General. Over the next 5 years,
         you'll make strategic and operational decisions that determine whether
         your hospital thrives or closes its doors.
       </p>
 
       <Button size="large" onClick={() => dispatch({ type: 'START_GAME' })}>
-        Begin Quarter 1
+        Begin Year 1
       </Button>
     </div>
   )

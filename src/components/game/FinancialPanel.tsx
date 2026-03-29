@@ -1,11 +1,11 @@
-import type { HospitalState } from '../../engine/types'
+import type { HospitalFinancials } from '../../engine/modules/finance'
 
 interface Props {
-  financial: HospitalState['financial']
+  financials: HospitalFinancials
 }
 
-export function FinancialPanel({ financial }: Props) {
-  const fin = financial
+export function FinancialPanel({ financials }: Props) {
+  const fin = financials
   const marginColor = fin.margin > 0.05 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)'
 
   return (
@@ -33,30 +33,30 @@ export function FinancialPanel({ financial }: Props) {
         <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
 
         <FinRow label="Expenses" value={fin.expenses.total} />
-        <FinRow label="  Labor" value={fin.expenses.labor.amount} muted />
-        <FinRow label="  Supplies" value={fin.expenses.supplies.amount} muted />
-        <FinRow label="  Overhead" value={fin.expenses.overhead.amount} muted />
-        <FinRow label="  Capital" value={fin.expenses.capital.amount} muted />
-        {fin.expenses.programSubsidies > 0 && (
-          <FinRow label="  Programs" value={fin.expenses.programSubsidies} muted />
+        <FinRow label="  Labor" value={fin.expenses.labor} muted />
+        <FinRow label="  Supplies" value={fin.expenses.supplies} muted />
+        <FinRow label="  Overhead" value={fin.expenses.overhead} muted />
+        <FinRow label="  Capital" value={fin.expenses.capital} muted />
+        {fin.expenses.programs > 0 && (
+          <FinRow label="  Programs" value={fin.expenses.programs} muted />
         )}
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
 
         <FinRow label="Cash Reserves" value={fin.cashReserves}
-          color={fin.cashReserves > 10_000_000 ? 'var(--healthy)' : fin.cashReserves > 5_000_000 ? 'var(--warning)' : 'var(--crisis)'} />
+          color={fin.cashReserves > 30_000_000 ? 'var(--healthy)' : fin.cashReserves > 15_000_000 ? 'var(--warning)' : 'var(--crisis)'} />
 
         <div style={{ borderTop: '1px solid var(--border)', margin: '6px 0' }} />
 
-        {/* Payer mix summary */}
+        {/* Payer mix summary (static for v3) */}
         <p className="text-[12px] mb-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-muted)' }}>
           PAYER MIX
         </p>
         <div className="flex gap-2 text-[11px]" style={{ fontFamily: 'var(--font-data)', color: 'var(--text-muted)' }}>
-          <span>MCR {(fin.payers.medicare.share * 100).toFixed(0)}%</span>
-          <span>COM {(fin.payers.commercial.share * 100).toFixed(0)}%</span>
-          <span>MCD {(fin.payers.medicaid.share * 100).toFixed(0)}%</span>
-          <span>SP {(fin.payers.selfPay.share * 100).toFixed(0)}%</span>
+          <span>MCR 45%</span>
+          <span>COM 35%</span>
+          <span>MCD 15%</span>
+          <span>SP 5%</span>
         </div>
       </div>
     </div>
