@@ -44,9 +44,8 @@ describe('Sources module', () => {
   // 1. init produces valid state with default volume
   it('init produces valid state with default volume', () => {
     const state = defaultState()
-    expect(state.baseAnnualVolume).toBe(10_000)
+    expect(state.baseAnnualVolume).toBe(8_340)
     expect(state.edAdmissionRate).toBe(0.30)
-    expect(state.seasonalVariance).toBe(0.10)
     expect(state.yearIndex).toBe(0)
   })
 
@@ -58,10 +57,10 @@ describe('Sources module', () => {
 
     const { outputs } = sourcesModule.tick(state, inputs, controls)
 
-    // Base 10000 with seasonal variance ±10%, quality=56 (no reputation effect)
-    // Volume should be 9000-11000 range
-    expect(outputs.patients.count).toBeGreaterThanOrEqual(8_500)
-    expect(outputs.patients.count).toBeLessThanOrEqual(11_500)
+    // Base 8340 (readmissions add ~1660 to reach ~10000 total)
+    // Without readmissions in this unit test, volume ≈ 8340
+    expect(outputs.patients.count).toBeGreaterThanOrEqual(7_000)
+    expect(outputs.patients.count).toBeLessThanOrEqual(9_500)
     expect(outputs.patients.avgAcuity).toBe(1.5)
     expect(outputs.patients.surgicalFraction).toBe(0.15)
     expect(outputs.patients.avgLOS).toBe(5.2)
@@ -80,11 +79,11 @@ describe('Sources module', () => {
     const { outputs: outNone } = sourcesModule.tick(state, inputsNoPressure, controls)
     const { outputs: outFull } = sourcesModule.tick(state, inputsFullPressure, controls)
 
-    // Full bed pressure: volume × (1 - 1.0 × 0.3) = volume × 0.7
-    // So full pressure output should be ~70% of no-pressure output
+    // Full bed pressure: volume × (1 - 1.0 × 0.15) = volume × 0.85
+    // So full pressure output should be ~85% of no-pressure output
     const ratio = outFull.patients.count / outNone.patients.count
-    expect(ratio).toBeGreaterThanOrEqual(0.65)
-    expect(ratio).toBeLessThanOrEqual(0.75)
+    expect(ratio).toBeGreaterThanOrEqual(0.80)
+    expect(ratio).toBeLessThanOrEqual(0.90)
   })
 
   // 4. Readmission feedback adds to volume

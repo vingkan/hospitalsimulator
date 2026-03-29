@@ -22,8 +22,8 @@ const PAYER_MIX = {
   // selfPay = remainder
 }
 
-const MEDICARE_BASE_RATE = 14_000
-const COMMERCIAL_BASE_RATE = 20_000
+const MEDICARE_BASE_RATE = 15_000
+const COMMERCIAL_BASE_RATE = 22_000
 const MEDICAID_RATE = 8_000
 const SELF_PAY_RATE = 3_000
 
@@ -32,7 +32,7 @@ const READMISSION_PENALTY_FACTOR = 0.02
 
 const BASE_OVERHEAD_PER_YEAR = 32_000_000         // $8M/quarter × 4
 const BASE_MALPRACTICE_PER_YEAR = 1_000_000       // scales with quality
-const CAPITAL_DEPRECIATION_PER_YEAR = 10_000_000   // $2.5M/quarter × 4
+const CAPITAL_DEPRECIATION_PER_YEAR = 8_000_000    // ~5% of expenses
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

@@ -21,7 +21,9 @@ describe('initializeGame', () => {
     expect(state.year).toBe(1)
     expect(state.gameOver).toBe(false)
     expect(state.history).toHaveLength(0)
-    expect(state.prevReadmissions).toBe(0)
+    // Readmissions seeded at steady-state: base * rate / (1 - rate)
+    expect(state.prevReadmissions).toBeGreaterThan(1000)
+    expect(state.prevReadmissions).toBeLessThan(2500)
     expect(state.financials.cashReserves).toBeGreaterThan(0)
     expect(state.financials.margin).toBeGreaterThan(-0.5)
     expect(state.financials.margin).toBeLessThan(0.5)
@@ -64,19 +66,19 @@ describe('simulateYear', () => {
     expect(state.history).toHaveLength(5)
   })
 
-  it('detects game over when cash goes negative', () => {
+  it('detects game over when cash goes deeply negative', () => {
     const deck = shuffleEvents(ALL_EVENTS)
     let state = initializeGame(deck)
 
-    // Drain cash by setting it very low
-    state = { ...state, financials: { ...state.financials, cashReserves: 100 } }
+    // Set cash deeply negative so even positive net income can't recover
+    state = { ...state, financials: { ...state.financials, cashReserves: -100_000_000 } }
 
-    // With very low cash and normal expenses, should go bankrupt
     const event = drawEvent(deck, 0)
     const result = simulateYear(state, defaultPrograms(), event)
 
-    // Cash should be negative after expenses exceed tiny reserve
-    expect(result.state.financials.cashReserves).toBeLessThan(100)
+    // Cash should still be negative (net income ~$9M can't cover $100M hole)
+    expect(result.state.financials.cashReserves).toBeLessThan(0)
+    expect(result.state.gameOver).toBe(true)
   })
 })
 
@@ -172,26 +174,31 @@ describe('module interaction', () => {
 
 describe('recalcBedPressure', () => {
   it('increases bed pressure when OR recovery patients are added', () => {
+    // High volume to push occupancy above threshold (0.80)
     const medsurgOutput: ModuleOutputs = {
-      patients: { count: 8000, avgAcuity: 1.5, surgicalFraction: 0.15, avgLOS: 5.2 },
+      patients: { count: 12000, avgAcuity: 1.5, surgicalFraction: 0.15, avgLOS: 5.2 },
       financials: { revenue: 0, expenses: { labor: 0, supplies: 0, overhead: 0, capital: 0, programs: 0 } },
       signals: { bedPressure: 0.5, qualityScore: 56, readmissionRate: 0.16 },
     }
     const medsurgState: MedSurgState = {
       beds: 200,
-      occupancyRate: 0.5,
+      occupancyRate: 0.85,
       lengthOfStay: 5.2,
       qualityScore: 56,
       drgAccuracy: 1.0,
       readmissionRate: 0.16,
       headcount: 1100,
-      avgCompPerYear: 75000,
+      avgCompPerYear: 76000,
       prevHospitalistEffectiveness: null,
     }
 
     const pressureWithout = recalcBedPressure(medsurgOutput, 0, medsurgState)
-    const pressureWith = recalcBedPressure(medsurgOutput, 500, medsurgState)
+    const pressureWith = recalcBedPressure(medsurgOutput, 1000, medsurgState)
 
+    // 12000*5.2/(200*365) = 0.855 occupancy → pressure = (0.855-0.80)/0.15 = 0.367
+    // 13000*5.2/(200*365) = 0.926 → pressure = (0.926-0.80)/0.15 = 0.841
     expect(pressureWith).toBeGreaterThan(pressureWithout)
+    expect(pressureWithout).toBeGreaterThan(0)
+    expect(pressureWith).toBeGreaterThan(0.5)
   })
 })

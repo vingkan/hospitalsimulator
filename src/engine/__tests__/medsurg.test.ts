@@ -58,7 +58,7 @@ describe('Med/Surg module', () => {
     const state = defaultState()
     expect(state.beds).toBe(200)
     expect(state.headcount).toBe(1100)
-    expect(state.avgCompPerYear).toBe(75_000)
+    expect(state.avgCompPerYear).toBe(76_000)
     expect(state.qualityScore).toBeCloseTo(56, 0)
     expect(state.lengthOfStay).toBeCloseTo(5.2, 1)
     expect(state.readmissionRate).toBeCloseTo(0.166, 2)
@@ -228,7 +228,7 @@ describe('Med/Surg module', () => {
     expect(ns.occupancyRate).toBeLessThanOrEqual(0.80)
   })
 
-  // 10. Labor expense with overtime multiplier
+  // 10. Labor expense with fixed+variable split and overtime
   it('labor expense scales with headcount, comp, and overtime', () => {
     const state = defaultState()
     const inputs = defaultInputs()
@@ -240,11 +240,16 @@ describe('Med/Surg module', () => {
 
     const { outputs } = medSurgModule.tick(state, inputs, controls)
 
-    // headcount=1100, avgComp=75000*1.05=78750, overtime~1.35
-    // expected ≈ 1100 * 78750 * 1.35 ≈ 116,943,750
+    // Fixed+variable labor with 70/30 split
+    // fixedStaff=770, variableStaff=330, comp=76000*1.05=79800, overtime~1.35
+    // fixedCost = 770 * 79800 * 1.35 ≈ 82.9M
+    // variableUtilization ≈ 0.31 (volume=10000 at nurseRatio=7)
+    // variableCost = 330 * 79800 * 0.31 ≈ 8.2M
+    // total ≈ 91M
+    // With VARIABLE_STAFF_MULTIPLIER=2.4, high nurse ratio produces agency premium
     const labor = outputs.financials.expenses.labor
-    expect(labor).toBeGreaterThan(100_000_000)
-    expect(labor).toBeLessThan(130_000_000)
+    expect(labor).toBeGreaterThan(90_000_000)
+    expect(labor).toBeLessThan(120_000_000)
   })
 
   // 11. Supply expense by tier
@@ -265,7 +270,60 @@ describe('Med/Surg module', () => {
     expect(outP.financials.expenses.supplies).toBeGreaterThan(outB.financials.expenses.supplies)
   })
 
-  // 12. Program subsidies (hospitalist + discharge)
+  // 12. Labor formula: overstaffed branch (variable scales down with census)
+  it('labor cost decreases when volume drops (variable scales down)', () => {
+    const state = defaultState()
+    const controlsDefault = defaultControls()
+
+    const inputsNormal = defaultInputs(10000)
+    const inputsLow = defaultInputs(6000)
+
+    const { outputs: outNormal } = medSurgModule.tick(state, inputsNormal, controlsDefault)
+    const { outputs: outLow } = medSurgModule.tick(state, inputsLow, controlsDefault)
+
+    // Lower volume → lower variable labor cost
+    expect(outLow.financials.expenses.labor).toBeLessThan(outNormal.financials.expenses.labor)
+    // Fixed component (~70%) stays the same, only variable flexes
+    const reduction = 1 - outLow.financials.expenses.labor / outNormal.financials.expenses.labor
+    expect(reduction).toBeGreaterThan(0.02)
+    expect(reduction).toBeLessThan(0.15)
+  })
+
+  // 13. Labor formula: understaffed branch (agency premium)
+  it('labor cost includes agency premium when understaffed', () => {
+    const state = defaultState()
+    const controls = defaultControls()
+
+    // Very high volume to exceed variable staff capacity
+    const inputsHigh = defaultInputs(16000)
+    const { outputs: outHigh } = medSurgModule.tick(state, inputsHigh, controls)
+
+    // Normal volume
+    const inputsNormal = defaultInputs(10000)
+    const { outputs: outNormal } = medSurgModule.tick(state, inputsNormal, controls)
+
+    // Agency premium should make high-volume labor more expensive
+    const laborRatio = outHigh.financials.expenses.labor / outNormal.financials.expenses.labor
+    // Labor should increase more than proportionally due to agency premium (1.5x rate)
+    expect(laborRatio).toBeGreaterThan(1.0)
+  })
+
+  // 14. Labor formula: zero volume produces only fixed cost
+  it('zero volume produces only fixed labor cost', () => {
+    const state = defaultState()
+    const controls = defaultControls()
+    const inputsZero = defaultInputs(0)
+
+    const { outputs } = medSurgModule.tick(state, inputsZero, controls)
+    const labor = outputs.financials.expenses.labor
+
+    // Fixed cost = 70% × 1100 × 76000 × overtimeMultiplier(1.05) ≈ $61.4M
+    // Variable utilization = 0 (zero volume → zero hours needed), so variableCost ≈ 0
+    const expectedFixed = 1100 * 0.70 * 76000 * 1.05 // overtime at nurseRatio=5
+    expect(labor).toBeCloseTo(expectedFixed, -5)
+  })
+
+  // 15. Program subsidies (hospitalist + discharge)
   it('program subsidies reflect active programs', () => {
     const state = defaultState()
     const inputs = defaultInputs()

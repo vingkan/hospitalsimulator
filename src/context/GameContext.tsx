@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import type { OperationsConsoleState, ProgramState, GamePhase } from '../engine/types'
 import { simulateYear, initializeGame, type GameState as EngineState, type YearResult } from '../engine/orchestrator'
-import { shuffleEvents, drawEvent } from '../engine/events'
+import { shuffleEvents, drawEvent, EVENTS_ENABLED, NO_EVENT } from '../engine/events'
 import { buildNarrative, type NarrativeResult } from '../engine/narrative'
 
 // ── UI result type (engine result + narrative) ─────────────────────
@@ -101,7 +101,9 @@ function buildUIResult(engineResult: YearResult, prevResult: YearResult | null):
 // ── Initial state ──────────────────────────────────────────────────
 
 function createInitialGameState(): GameState {
-  const deck = shuffleEvents()
+  const deck = EVENTS_ENABLED
+    ? shuffleEvents()
+    : [NO_EVENT, NO_EVENT, NO_EVENT, NO_EVENT, NO_EVENT]
   const engineState = initializeGame(deck)
   return {
     phase: 'setup',

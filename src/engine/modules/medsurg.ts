@@ -59,7 +59,7 @@ const DISCHARGE_NURSELED_SUBSIDY_PER_YEAR = 400_000
 
 const DEFAULT_BEDS = 200
 const DEFAULT_HEADCOUNT = 1100
-const DEFAULT_AVG_COMP_PER_YEAR = 75_000
+const DEFAULT_AVG_COMP_PER_YEAR = 76_000
 const DEFAULT_QUALITY = 56
 const DEFAULT_LOS = 5.2
 const DEFAULT_READMISSION = 0.166
@@ -279,13 +279,32 @@ export const medSurgModule: HospitalModule = {
     const occupancyRate = Math.min(1.0, (volume * lengthOfStay) / (beds * DAYS_IN_YEAR))
 
     // ── Bed pressure ───────────────────────────────────────────────
-    const bedPressure = Math.min(1.0, occupancyRate / 0.95)
+    // Threshold formula: no diversion below 80% occupancy, ramps to 1.0 at 95%
+    const bedPressure = Math.min(1.0, Math.max(0, (occupancyRate - 0.80) / 0.15))
 
     // ── Financials (annual) ────────────────────────────────────────
 
-    // Labor
+    // Labor: fixed + variable split (70/30)
+    // Fixed staff (management, specialists, admin) always paid.
+    // Variable staff (PRN/agency) scales with census utilization.
     const overtimeMultiplier = getOvertimeMultiplier(nurseRatio)
-    let laborCost = headcount * avgCompPerYear * overtimeMultiplier
+    const fixedStaff = headcount * 0.70
+    const variableStaff = headcount * 0.30
+    // Hours needed: nursing hours (24/ratio per patient-day) × 2.4 for all variable roles
+    // (techs, aides, dietary, housekeeping scale with census alongside nursing)
+    const VARIABLE_STAFF_MULTIPLIER = 2.4
+    const productiveHoursNeeded = volume * lengthOfStay * (1 / nurseRatio) * 24 * VARIABLE_STAFF_MULTIPLIER
+    const availableVariableHours = variableStaff * 2080 * 0.85 // annual hours × productivity
+    const variableUtilization = Math.min(1.0, productiveHoursNeeded / (availableVariableHours || 1))
+    const fixedCost = fixedStaff * avgCompPerYear * overtimeMultiplier
+    const variableCost = variableStaff * avgCompPerYear * variableUtilization
+    let laborCost = fixedCost + variableCost
+    // Agency premium when understaffed
+    if (productiveHoursNeeded > availableVariableHours) {
+      const excessHours = productiveHoursNeeded - availableVariableHours
+      const agencyPremium = excessHours * (avgCompPerYear / 2080) * 1.5
+      laborCost += agencyPremium
+    }
     for (const ev of events) {
       if (ev.laborCostDelta != null) laborCost += ev.laborCostDelta
     }

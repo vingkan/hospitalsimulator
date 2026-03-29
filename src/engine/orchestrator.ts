@@ -94,7 +94,8 @@ export function recalcBedPressure(
   const adjustedOccupancy = Math.min(1.0,
     (totalPatients * medsurgOutput.patients.avgLOS) / (medsurgState.beds * 365)
   )
-  return Math.min(1.0, adjustedOccupancy / 0.95)
+  // Threshold formula: no diversion below 80%, ramps to 1.0 at 95%
+  return Math.min(1.0, Math.max(0, (adjustedOccupancy - 0.80) / 0.15))
 }
 
 // ── Core simulation ─────────────────────────────────────────────────
@@ -303,6 +304,13 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
     dryMedsurgResult.outputs.patients.count,
   )
 
+  // Seed readmissions at steady-state so Year 1 doesn't start 16% below equilibrium.
+  // Without this, Year 1 has 0 readmissions → low volume → low margin, then Year 2
+  // jumps to ~12% margin from readmission feedback alone (zero player action).
+  const baseVolume = drySourcesResult.outputs.patients.count
+  const readmissionRate = (dryMedsurgResult.nextState as MedSurgState).readmissionRate
+  const steadyStateReadmissions = Math.round(baseVolume * readmissionRate / (1 - readmissionRate))
+
   return {
     year: 1,
     moduleStates: {
@@ -311,7 +319,7 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
       or: orState,
     },
     financials: initialFinancials,
-    prevReadmissions: 0,
+    prevReadmissions: steadyStateReadmissions,
     programs: defaultPrograms,
     eventDeck,
     history: [],

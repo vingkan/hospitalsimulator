@@ -82,8 +82,8 @@ describe('Finance aggregator', () => {
     expect(result.expenses.programs).toBe(2_000_000)
     // Overhead includes base $32M + malpractice
     expect(result.expenses.overhead).toBeGreaterThan(32_000_000)
-    // Capital includes $10M depreciation
-    expect(result.expenses.capital).toBeGreaterThanOrEqual(10_000_000)
+    // Capital includes $8M depreciation
+    expect(result.expenses.capital).toBeGreaterThanOrEqual(8_000_000)
     // Total = sum of all categories
     expect(result.expenses.total).toBe(
       result.expenses.labor + result.expenses.supplies +

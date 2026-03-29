@@ -16,16 +16,17 @@ import type {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-const DEFAULT_BASE_ANNUAL_VOLUME = 10_000  // 2500/quarter × 4
+// Base volume excludes readmissions. With ~16.6% readmission rate,
+// base 8,340 + readmissions ≈ 10,000 total (AHA 200-bed community hospital).
+const DEFAULT_BASE_ANNUAL_VOLUME = 8_340
 const DEFAULT_ED_ADMISSION_RATE = 0.30
-const DEFAULT_SEASONAL_VARIANCE = 0.10
+const BED_PRESSURE_ADMISSION_COEFFICIENT = 0.15
 
 // ── Internal state shape ─────────────────────────────────────────────
 
 export interface SourcesState extends ModuleState {
   baseAnnualVolume: number
   edAdmissionRate: number
-  seasonalVariance: number
   yearIndex: number
 }
 
@@ -46,7 +47,6 @@ export const sourcesModule: HospitalModule = {
     return {
       baseAnnualVolume: (c.baseAnnualVolume as number) ?? DEFAULT_BASE_ANNUAL_VOLUME,
       edAdmissionRate: (c.edAdmissionRate as number) ?? DEFAULT_ED_ADMISSION_RATE,
-      seasonalVariance: (c.seasonalVariance as number) ?? DEFAULT_SEASONAL_VARIANCE,
       yearIndex: 0,
     }
   },
@@ -59,9 +59,8 @@ export const sourcesModule: HospitalModule = {
     const s = state as SourcesState
     const events = relevantEvents(inputs.events)
 
-    // ── Base volume with seasonal variation ─────────────────────────
-    const seasonalMod = s.seasonalVariance * Math.sin(s.yearIndex * 1.2)
-    let volume = s.baseAnnualVolume * (1 + seasonalMod)
+    // ── Base volume (events provide year-over-year variation) ───────
+    let volume = s.baseAnnualVolume
 
     // ── Readmission feedback ───────────────────────────────────────
     volume += inputs.readmissions
@@ -74,7 +73,7 @@ export const sourcesModule: HospitalModule = {
     }
 
     // ── Bed pressure reduces admissions ────────────────────────────
-    const effectiveAdmissionRate = 1 - inputs.signals.bedPressure * 0.3
+    const effectiveAdmissionRate = 1 - inputs.signals.bedPressure * BED_PRESSURE_ADMISSION_COEFFICIENT
     volume = volume * effectiveAdmissionRate
 
     // ── Quality reputation effect ──────────────────────────────────
@@ -90,7 +89,6 @@ export const sourcesModule: HospitalModule = {
     const nextState: SourcesState = {
       baseAnnualVolume: s.baseAnnualVolume,
       edAdmissionRate: s.edAdmissionRate,
-      seasonalVariance: s.seasonalVariance,
       yearIndex: s.yearIndex + 1,
     }
 

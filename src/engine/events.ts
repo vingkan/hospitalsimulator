@@ -1,6 +1,19 @@
 import type { ExternalEvent } from './types'
 import type { EventEffect } from './modules/types'
 
+// Events are disabled during calibration. Set to true to re-enable.
+export const EVENTS_ENABLED = false
+
+export const NO_EVENT: ExternalEvent = {
+  id: 'none',
+  title: 'Uneventful Year',
+  description: 'The hospital operates normally this year.',
+  operationalEffects: {},
+  financialEffects: {},
+  duration: 1,
+  teaches: 'Baseline operations without external disruption.',
+}
+
 export const ALL_EVENTS: ExternalEvent[] = [
   {
     id: 'medicare-rate-cut',
