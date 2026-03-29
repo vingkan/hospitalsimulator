@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function ProjectionPanel({ diff, financials }: Props) {
-  const marginColor = financials.margin > 0.05 ? 'var(--healthy)' : financials.margin > 0 ? 'var(--warning)' : 'var(--crisis)'
+  const marginColor = financials.margin >= 0.03 ? 'var(--healthy)' : financials.margin > 0 ? 'var(--warning)' : 'var(--crisis)'
   const fogLevel = diff?.fog.level ?? 0
   const conflictSeverity = diff?.fog.conflictSeverity ?? 0
 

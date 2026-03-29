@@ -36,7 +36,7 @@ export function DecisionPhase() {
         </div>
         <div className="flex gap-3">
           <HealthBadge label="MARGIN" value={`${(fin.margin * 100).toFixed(1)}%`}
-            level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
+            level={fin.margin >= 0.03 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
           <HealthBadge label="CASH" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
             level={fin.cashReserves > 30_000_000 ? 'healthy' : fin.cashReserves > 15_000_000 ? 'warning' : 'crisis'} />
         </div>

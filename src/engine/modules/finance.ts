@@ -30,7 +30,7 @@ const SELF_PAY_RATE = 3_000
 const READMISSION_PENALTY_THRESHOLD = 0.15
 const READMISSION_PENALTY_FACTOR = 0.02
 
-const BASE_OVERHEAD_PER_YEAR = 32_000_000         // $8M/quarter × 4
+const BASE_OVERHEAD_PER_YEAR = 35_000_000         // IT, admin, compliance, facilities (~21% of expenses)
 const BASE_MALPRACTICE_PER_YEAR = 1_000_000       // scales with quality
 const CAPITAL_DEPRECIATION_PER_YEAR = 8_000_000    // ~5% of expenses
 

@@ -40,8 +40,8 @@ export function EndgameScreen() {
         Riverside General: 5-Year Review
       </h1>
       <p style={{ fontFamily: 'var(--font-display)' }} className={`text-[32px] font-bold text-center mb-8`}>
-        <span style={{ color: fin.margin > 0.05 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)' }}>
-          {fin.margin > 0.05 ? 'Your hospital is thriving.' :
+        <span style={{ color: fin.margin >= 0.03 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)' }}>
+          {fin.margin >= 0.03 ? 'Your hospital is thriving.' :
            fin.margin > 0 ? 'Your hospital survived, barely.' :
            'Your hospital is in crisis.'}
         </span>
@@ -50,7 +50,7 @@ export function EndgameScreen() {
       {/* Final metrics */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <MetricBox label="Final Margin" value={`${(fin.margin * 100).toFixed(1)}%`}
-          level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
+          level={fin.margin >= 0.03 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
         <MetricBox label="Cash Reserves" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
           level={fin.cashReserves > 30_000_000 ? 'healthy' : 'warning'} />
         <MetricBox label="Quality Score" value={`${ms.qualityScore.toFixed(0)}/100`}
@@ -75,9 +75,9 @@ export function EndgameScreen() {
               <span className="font-bold w-16" style={{ fontFamily: 'var(--font-display)' }}>Y{r.year}</span>
               <span className="px-3 py-1 rounded" style={{
                 fontFamily: 'var(--font-data)',
-                background: r.financials.margin > 0.05 ? '#064E3B40' :
+                background: r.financials.margin >= 0.03 ? '#064E3B40' :
                   r.financials.margin > 0 ? '#78350F40' : '#9F122340',
-                color: r.financials.margin > 0.05 ? 'var(--healthy)' :
+                color: r.financials.margin >= 0.03 ? 'var(--healthy)' :
                   r.financials.margin > 0 ? 'var(--warning)' : 'var(--crisis)',
               }}>
                 {(r.financials.margin * 100).toFixed(1)}% margin

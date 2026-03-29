@@ -322,12 +322,31 @@ export function initializeGame(eventDeck: ExternalEvent[]): GameState {
     dryMedsurgResult.outputs.patients.count,
   )
 
-  // Seed readmissions at steady-state so Year 1 doesn't start 16% below equilibrium.
-  // Without this, Year 1 has 0 readmissions → low volume → low margin, then Year 2
-  // jumps to ~12% margin from readmission feedback alone (zero player action).
-  const baseVolume = drySourcesResult.outputs.patients.count
-  const readmissionRate = (dryMedsurgResult.nextState as MedSurgState).readmissionRate
-  const steadyStateReadmissions = Math.round(baseVolume * readmissionRate / (1 - readmissionRate))
+  // Seed readmissions at steady-state via full simulation iteration.
+  // Run simulateYear in a loop until readmissions stabilize, so Year 1 starts
+  // at true equilibrium (no artificial volume ramp).
+  let seedState: GameState = {
+    year: 1,
+    moduleStates: { sources: sourcesState, medsurg: medsurgState, or: orState },
+    financials: initialFinancials,
+    prevReadmissions: 0,
+    programs: defaultPrograms,
+    eventDeck,
+    history: [],
+    gameOver: false,
+  }
+  const seedEvent: ExternalEvent = { id: 'none', title: '', description: '', operationalEffects: {}, financialEffects: {}, duration: 1, teaches: '' }
+  for (let i = 0; i < 10; i++) {
+    const r = simulateYear(seedState, defaultPrograms, seedEvent)
+    const nextReadmissions = Math.round(
+      r.moduleOutputs.medsurg.patients.count *
+      (r.state.moduleStates.medsurg as MedSurgState).readmissionRate
+    )
+    if (Math.abs(nextReadmissions - seedState.prevReadmissions) < 2) break
+    // Reset state but carry forward readmissions
+    seedState = { ...seedState, prevReadmissions: nextReadmissions }
+  }
+  const steadyStateReadmissions = seedState.prevReadmissions
 
   return {
     year: 1,

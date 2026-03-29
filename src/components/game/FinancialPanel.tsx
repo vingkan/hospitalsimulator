@@ -6,7 +6,7 @@ interface Props {
 
 export function FinancialPanel({ financials }: Props) {
   const fin = financials
-  const marginColor = fin.margin > 0.05 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)'
+  const marginColor = fin.margin >= 0.03 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)'
 
   return (
     <div className="rounded-xl p-5 h-full" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
