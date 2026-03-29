@@ -7,7 +7,6 @@ export function ResultsPhase() {
   const result = state.currentResult
   const [revealed, setRevealed] = useState(false)
 
-  // Dramatic pause: 1s for Q1-Q3, 3s for Q4
   const isQ4 = result && result.quarter === 4
   const pauseDuration = isQ4 ? 3000 : 1000
 
@@ -22,7 +21,7 @@ export function ResultsPhase() {
   if (!revealed) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
-        <p className="text-[36px] text-slate-500 animate-pulse">
+        <p className="text-[36px] animate-pulse" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-muted)' }}>
           Computing Quarter {result.quarter}...
         </p>
       </div>
@@ -36,69 +35,68 @@ export function ResultsPhase() {
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-[36px] font-bold">Quarter {result.quarter} Results</h2>
-        <div className="flex gap-4">
-          <span className={`text-[28px] font-bold px-4 py-1 rounded-lg ${
-            fin.margin > 0.05 ? 'bg-emerald-100 text-emerald-700' :
-            fin.margin > 0 ? 'bg-amber-100 text-amber-700' :
-            'bg-rose-100 text-rose-700'
-          }`}>
-            Margin: {(fin.margin * 100).toFixed(1)}%
-          </span>
-          <span className={`text-[28px] font-bold px-4 py-1 rounded-lg ${
-            fin.cashReserves > 5_000_000 ? 'bg-emerald-100 text-emerald-700' :
-            fin.cashReserves > 2_000_000 ? 'bg-amber-100 text-amber-700' :
-            'bg-rose-100 text-rose-700'
-          }`}>
-            Cash: ${(fin.cashReserves / 1_000_000).toFixed(1)}M
-          </span>
+        <h2 style={{ fontFamily: 'var(--font-display)' }} className="text-[36px] font-bold">
+          Quarter {result.quarter} Results
+        </h2>
+        <div className="flex gap-3">
+          <HealthBadge label="MARGIN" value={`${(fin.margin * 100).toFixed(1)}%`}
+            level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
+          <HealthBadge label="CASH" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
+            level={fin.cashReserves > 10_000_000 ? 'healthy' : fin.cashReserves > 5_000_000 ? 'warning' : 'crisis'} />
         </div>
       </div>
 
       {/* Event card */}
-      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 mb-6">
-        <p className="text-[18px] text-amber-600 font-semibold mb-1">External Event</p>
-        <h3 className="text-[28px] font-bold text-amber-900">{result.event.title}</h3>
-        <p className="text-[22px] text-amber-800 mt-1">{result.event.description}</p>
-        <p className="text-[16px] text-amber-600 mt-2 italic">Teaches: {result.event.teaches}</p>
+      <div className="rounded-xl p-6 mb-6" style={{
+        background: 'var(--surface)',
+        borderLeft: '3px solid var(--warning)',
+        border: '1px solid var(--border)',
+        borderLeftWidth: '3px',
+        borderLeftColor: 'var(--warning)',
+      }}>
+        <p style={{ fontFamily: 'var(--font-data)', color: 'var(--warning)' }} className="text-[11px] uppercase tracking-wider mb-2">
+          External Event
+        </p>
+        <h3 style={{ fontFamily: 'var(--font-display)' }} className="text-[24px] font-bold mb-2">
+          {result.event.title}
+        </h3>
+        <p className="text-[16px] mb-2" style={{ color: 'var(--text-muted)' }}>{result.event.description}</p>
+        <p className="text-[13px] italic" style={{ color: 'var(--text-muted)' }}>Teaches: {result.event.teaches}</p>
       </div>
 
-      {/* Narrative */}
+      {/* Narrative sections */}
       <div className="space-y-4 mb-6">
         {result.operationalHighlights.length > 0 && (
-          <div className="bg-slate-50 rounded-xl p-6">
-            <h3 className="text-[22px] font-semibold text-slate-700 mb-2">What Happened</h3>
-            {result.operationalHighlights.map((h, i) => (
-              <p key={i} className="text-[22px] text-slate-800 mb-1">• {h}</p>
-            ))}
-          </div>
+          <NarrativeSection title="What Happened" items={result.operationalHighlights} />
         )}
 
         {result.narrative.length > 0 && (
-          <div className="bg-blue-50 rounded-xl p-6">
-            <h3 className="text-[22px] font-semibold text-blue-700 mb-2">Why It Matters</h3>
+          <div className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[14px] font-semibold uppercase tracking-wider mb-3">
+              Why It Matters
+            </h3>
             {result.narrative.map((n, i) => (
-              <p key={i} className="text-[22px] text-blue-900 mb-2">{n}</p>
+              <p key={i} className="text-[18px] mb-3 leading-relaxed" style={{ color: 'var(--text)' }}>{n}</p>
             ))}
           </div>
         )}
 
         {result.financialHighlights.length > 0 && (
-          <div className="bg-emerald-50 rounded-xl p-6">
-            <h3 className="text-[22px] font-semibold text-emerald-700 mb-2">Financial Impact</h3>
-            {result.financialHighlights.map((h, i) => (
-              <p key={i} className="text-[22px] text-emerald-900 mb-1">• {h}</p>
-            ))}
-          </div>
+          <NarrativeSection title="Financial Impact" items={result.financialHighlights} />
         )}
       </div>
 
-      {/* Facilitator discussion prompt */}
-      {result.decisions.length > 0 && (
-        <div className="border-2 border-slate-300 rounded-xl p-6 mb-6 bg-white">
-          <p className="text-[20px] text-slate-500 font-semibold mb-2">Discussion</p>
-          <p className="text-[24px] text-slate-800">
-            "Why did that happen? What would you do differently?"
+      {/* Discussion prompt */}
+      {result.programs && (
+        <div className="rounded-xl p-5 mb-6" style={{
+          background: 'var(--surface)',
+          borderLeft: '3px solid var(--primary)',
+        }}>
+          <p style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[12px] font-semibold uppercase tracking-wider mb-2">
+            Discussion
+          </p>
+          <p className="text-[18px]" style={{ color: 'var(--text)' }}>
+            Why did that happen? What would you do differently?
           </p>
         </div>
       )}
@@ -110,6 +108,34 @@ export function ResultsPhase() {
       >
         {isFinalQuarter ? 'See Final Results' : `Continue to Quarter ${result.quarter + 1}`}
       </Button>
+    </div>
+  )
+}
+
+function HealthBadge({ label, value, level }: { label: string; value: string; level: 'healthy' | 'warning' | 'crisis' }) {
+  const colors = {
+    healthy: { bg: '#064E3B40', text: 'var(--healthy)' },
+    warning: { bg: '#78350F40', text: 'var(--warning)' },
+    crisis: { bg: '#9F122340', text: 'var(--crisis)' },
+  }
+  const c = colors[level]
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: c.bg }}>
+      <span style={{ fontFamily: 'var(--font-data)', color: c.text }} className="text-[11px] uppercase tracking-wider">{label}</span>
+      <span style={{ fontFamily: 'var(--font-data)', color: c.text }} className="text-[16px] font-semibold">{value}</span>
+    </div>
+  )
+}
+
+function NarrativeSection({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-xl p-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[14px] font-semibold uppercase tracking-wider mb-3">
+        {title}
+      </h3>
+      {items.map((h, i) => (
+        <p key={i} className="text-[16px] mb-1" style={{ color: 'var(--text)' }}>{h}</p>
+      ))}
     </div>
   )
 }

@@ -5,17 +5,17 @@ import { createInitialState } from '../constants'
 describe('computeFinancial', () => {
   const initialState = createInitialState([])
 
-  it('starting state revenue is approximately $35-36M', () => {
+  it('starting state revenue is approximately $39-40M', () => {
     const financial = computeFinancial(initialState)
-    // Revenue includes medical (~$27M) + surgical (~$8M)
-    expect(financial.revenue.total).toBeGreaterThan(33_000_000)
-    expect(financial.revenue.total).toBeLessThan(38_000_000)
+    // Revenue includes medical (~$31M) + surgical (~$8M)
+    expect(financial.revenue.total).toBeGreaterThan(38_000_000)
+    expect(financial.revenue.total).toBeLessThan(41_000_000)
   })
 
-  it('starting state expenses are approximately $29-30M', () => {
+  it('starting state expenses are approximately $37-39M', () => {
     const financial = computeFinancial(initialState)
-    expect(financial.expenses.total).toBeGreaterThan(28_000_000)
-    expect(financial.expenses.total).toBeLessThan(32_000_000)
+    expect(financial.expenses.total).toBeGreaterThan(37_000_000)
+    expect(financial.expenses.total).toBeLessThan(40_000_000)
   })
 
   it('starting margin is positive (hospital starts healthy)', () => {
@@ -23,12 +23,11 @@ describe('computeFinancial', () => {
     expect(financial.margin).toBeGreaterThan(0)
   })
 
-  it('starting margin is positive and above 10%', () => {
+  it('starting margin is realistic at 2-4%', () => {
     const financial = computeFinancial(initialState)
-    // Starting margin is intentionally high (~18%) to give room for mistakes.
-    // This is a calibration knob: adjust STARTING_PATIENT_VOLUME or payer rates to tune.
-    expect(financial.margin).toBeGreaterThan(0.10)
-    expect(financial.margin).toBeLessThan(0.25)
+    // Starting margin calibrated to realistic community hospital (~2.7%)
+    expect(financial.margin).toBeGreaterThan(0.01)
+    expect(financial.margin).toBeLessThan(0.05)
   })
 
   it('surgical revenue is tracked separately', () => {

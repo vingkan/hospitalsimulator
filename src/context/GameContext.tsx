@@ -1,20 +1,18 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
-import type { HospitalState, SelectedDecision, QuarterResult, GamePhase } from '../engine/types'
+import type { HospitalState, OperationsConsoleState, QuarterResult, GamePhase } from '../engine/types'
 import { createInitialState } from '../engine/constants'
 import { shuffleEvents, drawEvent } from '../engine/events'
-import { simulateQuarter } from '../engine/simulate'
-import { getAvailablePackages } from '../decisions'
+import { simulateQuarter, defaultConsoleState } from '../engine/simulate'
 
 interface GameState {
   phase: GamePhase
   hospitalState: HospitalState
   currentResult: QuarterResult | null
-  availablePackages: ReturnType<typeof getAvailablePackages>
 }
 
 type GameAction =
   | { type: 'START_GAME' }
-  | { type: 'SUBMIT_DECISIONS'; decisions: SelectedDecision[] }
+  | { type: 'SUBMIT_CONSOLE'; consoleState: OperationsConsoleState }
   | { type: 'SHOW_RESULTS' }
   | { type: 'NEXT_QUARTER' }
   | { type: 'RESET' }
@@ -26,7 +24,6 @@ function createInitialGameState(): GameState {
     phase: 'setup',
     hospitalState,
     currentResult: null,
-    availablePackages: getAvailablePackages(hospitalState),
   }
 }
 
@@ -36,15 +33,14 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         phase: 'decision',
-        availablePackages: getAvailablePackages(state.hospitalState),
       }
 
-    case 'SUBMIT_DECISIONS': {
+    case 'SUBMIT_CONSOLE': {
       const event = drawEvent(
         state.hospitalState.eventDeck,
         state.hospitalState.quarter - 1
       )
-      const result = simulateQuarter(state.hospitalState, action.decisions, event)
+      const result = simulateQuarter(state.hospitalState, action.consoleState, event)
       return {
         ...state,
         phase: 'computing',
@@ -67,7 +63,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         phase: 'decision',
-        availablePackages: getAvailablePackages(state.hospitalState),
       }
     }
 
@@ -98,3 +93,5 @@ export function useGame() {
   if (!ctx) throw new Error('useGame must be used within GameProvider')
   return ctx
 }
+
+export { defaultConsoleState }

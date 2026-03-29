@@ -30,50 +30,55 @@ export function EndgameScreen() {
   const ops = state.hospitalState.operational
   const history = state.hospitalState.history
 
-  // Compare to national median
   const nationalMedianMargin = 0.02
   const beat = fin.margin > nationalMedianMargin
 
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
-      <h1 className="text-[48px] font-bold text-center mb-2">
+      <h1 style={{ fontFamily: 'var(--font-display)' }} className="text-[48px] font-bold text-center mb-2">
         Riverside General: Year End
       </h1>
-      <p className={`text-[32px] font-bold text-center mb-8 ${
-        fin.margin > 0.05 ? 'text-emerald-600' :
-        fin.margin > 0 ? 'text-amber-600' :
-        'text-rose-600'
-      }`}>
-        {fin.margin > 0.05 ? 'Your hospital is thriving.' :
-         fin.margin > 0 ? 'Your hospital survived, barely.' :
-         'Your hospital is in crisis.'}
+      <p style={{ fontFamily: 'var(--font-display)' }} className={`text-[32px] font-bold text-center mb-8`}>
+        <span style={{ color: fin.margin > 0.05 ? 'var(--healthy)' : fin.margin > 0 ? 'var(--warning)' : 'var(--crisis)' }}>
+          {fin.margin > 0.05 ? 'Your hospital is thriving.' :
+           fin.margin > 0 ? 'Your hospital survived, barely.' :
+           'Your hospital is in crisis.'}
+        </span>
       </p>
 
       {/* Final metrics */}
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <MetricBox label="Final Margin" value={`${(fin.margin * 100).toFixed(1)}%`} color={fin.margin > 0.05 ? 'emerald' : fin.margin > 0 ? 'amber' : 'rose'} />
-        <MetricBox label="Cash Reserves" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`} color={fin.cashReserves > 5_000_000 ? 'emerald' : 'amber'} />
-        <MetricBox label="Quality Score" value={`${ops.qualityScore.toFixed(0)}/100`} color={ops.qualityScore > 70 ? 'emerald' : ops.qualityScore > 50 ? 'amber' : 'rose'} />
-        <MetricBox label="vs National" value={beat ? 'Above Median' : 'Below Median'} color={beat ? 'emerald' : 'rose'} />
+        <MetricBox label="Final Margin" value={`${(fin.margin * 100).toFixed(1)}%`}
+          level={fin.margin > 0.05 ? 'healthy' : fin.margin > 0 ? 'warning' : 'crisis'} />
+        <MetricBox label="Cash Reserves" value={`$${(fin.cashReserves / 1_000_000).toFixed(1)}M`}
+          level={fin.cashReserves > 10_000_000 ? 'healthy' : 'warning'} />
+        <MetricBox label="Quality Score" value={`${ops.qualityScore.toFixed(0)}/100`}
+          level={ops.qualityScore > 70 ? 'healthy' : ops.qualityScore > 50 ? 'warning' : 'crisis'} />
+        <MetricBox label="vs National" value={beat ? 'Above Median' : 'Below Median'}
+          level={beat ? 'healthy' : 'crisis'} />
       </div>
 
       {/* Quarter-by-quarter summary */}
-      <div className="bg-slate-50 rounded-xl p-6 mb-8">
-        <h3 className="text-[24px] font-semibold mb-4">Quarter-by-Quarter</h3>
+      <div className="rounded-xl p-6 mb-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)' }} className="text-[14px] font-semibold uppercase tracking-wider mb-4">
+          Quarter-by-Quarter
+        </h3>
         <div className="space-y-3">
           {history.map((r, i) => (
-            <div key={i} className="flex items-center gap-4 text-[20px]">
-              <span className="font-bold w-12">Q{r.quarter}</span>
-              <span className={`px-3 py-1 rounded ${
-                r.state.financial.margin > 0.05 ? 'bg-emerald-100 text-emerald-700' :
-                r.state.financial.margin > 0 ? 'bg-amber-100 text-amber-700' :
-                'bg-rose-100 text-rose-700'
-              }`}>
+            <div key={i} className="flex items-center gap-4 text-[18px]">
+              <span className="font-bold w-12" style={{ fontFamily: 'var(--font-display)' }}>Q{r.quarter}</span>
+              <span className="px-3 py-1 rounded" style={{
+                fontFamily: 'var(--font-data)',
+                background: r.state.financial.margin > 0.05 ? '#064E3B40' :
+                  r.state.financial.margin > 0 ? '#78350F40' : '#9F122340',
+                color: r.state.financial.margin > 0.05 ? 'var(--healthy)' :
+                  r.state.financial.margin > 0 ? 'var(--warning)' : 'var(--crisis)',
+              }}>
                 {(r.state.financial.margin * 100).toFixed(1)}% margin
               </span>
-              <span className="text-slate-500">Event: {r.event.title}</span>
+              <span style={{ color: 'var(--text-muted)' }}>Event: {r.event.title}</span>
               {r.operationalHighlights[0] && (
-                <span className="text-slate-400 truncate">{r.operationalHighlights[0]}</span>
+                <span className="truncate" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>{r.operationalHighlights[0]}</span>
               )}
             </div>
           ))}
@@ -82,14 +87,19 @@ export function EndgameScreen() {
 
       {/* Debrief prompts */}
       <div className="mb-8">
-        <h3 className="text-[28px] font-semibold mb-4">
+        <h3 style={{ fontFamily: 'var(--font-display)' }} className="text-[28px] font-semibold mb-4">
           Now think about our product...
         </h3>
         <div className="space-y-4">
           {DEBRIEF_PROMPTS.map((dp, i) => (
-            <div key={i} className="border-2 border-slate-200 rounded-xl p-5 bg-white">
-              <p className="text-[20px] font-semibold text-slate-700 mb-2">{i + 1}. {dp.title}</p>
-              <p className="text-[20px] text-slate-600">{dp.prompt}</p>
+            <div key={i} className="rounded-xl p-5" style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+            }}>
+              <p className="text-[18px] font-semibold mb-2" style={{ color: 'var(--primary)' }}>
+                {i + 1}. {dp.title}
+              </p>
+              <p className="text-[16px]" style={{ color: 'var(--text-muted)' }}>{dp.prompt}</p>
             </div>
           ))}
         </div>
@@ -102,18 +112,17 @@ export function EndgameScreen() {
   )
 }
 
-const COLOR_MAP: Record<string, { bg: string; text: string }> = {
-  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
-  amber: { bg: 'bg-amber-50', text: 'text-amber-700' },
-  rose: { bg: 'bg-rose-50', text: 'text-rose-700' },
-}
-
-function MetricBox({ label, value, color }: { label: string; value: string; color: string }) {
-  const colors = COLOR_MAP[color] ?? COLOR_MAP.amber
+function MetricBox({ label, value, level }: { label: string; value: string; level: 'healthy' | 'warning' | 'crisis' }) {
+  const colors = {
+    healthy: { bg: '#064E3B40', text: 'var(--healthy)' },
+    warning: { bg: '#78350F40', text: 'var(--warning)' },
+    crisis: { bg: '#9F122340', text: 'var(--crisis)' },
+  }
+  const c = colors[level]
   return (
-    <div className={`${colors.bg} rounded-xl p-4 text-center`}>
-      <p className={`text-[36px] font-bold ${colors.text}`}>{value}</p>
-      <p className="text-[18px] text-slate-500">{label}</p>
+    <div className="rounded-xl p-4 text-center" style={{ background: c.bg }}>
+      <p style={{ fontFamily: 'var(--font-display)', color: c.text }} className="text-[36px] font-bold">{value}</p>
+      <p className="text-[14px]" style={{ color: 'var(--text-muted)' }}>{label}</p>
     </div>
   )
 }

@@ -12,6 +12,7 @@ import {
   SURGICAL_CANCEL_THRESHOLD,
   SURGICAL_FRACTION,
   STARTING_LOS,
+  STARTING_PATIENT_VOLUME,
   programQualityScore,
 } from './constants'
 
@@ -145,8 +146,9 @@ export function computeOperational(
     DOMAIN_BOUNDS.readmissionRate
   )
 
-  // Volume and surgical calculations
-  let totalVolume = prev.dischargeRate
+  // Volume: always computed from baseline, not compounding from previous quarter.
+  // Events and quality reputation apply modifiers to the base, not to prev quarter's volume.
+  let totalVolume = STARTING_PATIENT_VOLUME
   let volumeModifier = 1.0
   for (const fx of additionalEffects) {
     if (fx.volumeModifier != null) volumeModifier += fx.volumeModifier
@@ -176,7 +178,7 @@ export function computeOperational(
   // If beds are too full, cancel elective surgeries
   if (occupancyRate > SURGICAL_CANCEL_THRESHOLD) {
     const cancelRate = (occupancyRate - SURGICAL_CANCEL_THRESHOLD) / (1 - SURGICAL_CANCEL_THRESHOLD)
-    const cancelled = Math.round(surgicalCompleted * cancelRate * 0.5) // cancel up to 50% of surgical
+    const cancelled = Math.round(surgicalCompleted * cancelRate * 0.25) // cancel up to 25% of surgical
     surgicalCompleted -= cancelled
   }
 

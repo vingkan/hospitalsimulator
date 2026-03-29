@@ -2,10 +2,10 @@ import type { DomainConfig, HospitalState, ProgramState } from './types'
 
 // Domain bounds for effect composition
 export const DOMAIN_BOUNDS: Record<string, DomainConfig> = {
-  lengthOfStay:    { min: 2.0, max: 8.0, diminishing: true },
+  lengthOfStay:    { min: 3.5, max: 8.0, diminishing: true },
   qualityScore:    { min: 20,  max: 100, diminishing: true },
   drgAccuracy:     { min: 0.85, max: 1.15, diminishing: true },
-  readmissionRate: { min: 0.05, max: 0.30, diminishing: true },
+  readmissionRate: { min: 0.08, max: 0.30, diminishing: true },
   occupancyRate:   { min: 0,   max: 1.0, diminishing: false },
   nurseRatio:      { min: 4,   max: 8,   diminishing: false },
 }
@@ -19,19 +19,19 @@ export const DAYS_IN_QUARTER = 91
 
 // Starting conditions: 200-bed community hospital
 export const STARTING_BEDS = 200
-export const STARTING_CASH = 10_000_000
+export const STARTING_CASH = 18_000_000
 export const STARTING_PATIENT_VOLUME = 2500 // cases per quarter
 export const STARTING_LOS = 5.2 // days
-export const STARTING_QUALITY = 65
+export const STARTING_QUALITY = 56 // matches engine computation: 0.4*80 + 0.3*20 + 0.3*60
 export const STARTING_NURSE_RATIO = 5 // 1:5
-export const STARTING_HEADCOUNT = 800
+export const STARTING_HEADCOUNT = 1100 // ~5.5:1 FTE-to-bed ratio for community hospitals
 export const STARTING_AVG_COMP_PER_QUARTER = 18_750 // $75K/year
-export const STARTING_OR_CAPACITY = 200 // max surgical cases per quarter
+export const STARTING_OR_CAPACITY = 400 // max surgical cases per quarter (buffer above 375 demand)
 export const STARTING_DRG_ACCURACY = 1.0
 
 // Payer rates per case
-export const MEDICARE_RATE = 12_000
-export const COMMERCIAL_RATE = 18_000
+export const MEDICARE_RATE = 14_000
+export const COMMERCIAL_RATE = 20_000
 export const MEDICAID_RATE = 8_000
 export const SELF_PAY_RATE = 3_000
 export const SURGICAL_RATE = 22_000
@@ -51,9 +51,9 @@ export const SUPPLY_COST = {
   premium: 3_200,
 }
 
-// Overhead per quarter (relatively fixed)
-export const OVERHEAD_PER_QUARTER = 6_000_000
-export const CAPITAL_DEPRECIATION_PER_QUARTER = 1_500_000
+// Overhead per quarter (includes IT, administration, facilities, compliance)
+export const OVERHEAD_PER_QUARTER = 8_000_000
+export const CAPITAL_DEPRECIATION_PER_QUARTER = 2_500_000
 
 // Overtime multiplier based on nurse-to-patient ratio
 // More patients per nurse = more overtime = exponential cost
@@ -89,7 +89,7 @@ export const SUPPLY_TIER_QUALITY: Record<string, number> = {
 }
 
 // Malpractice cost: base * (100 - quality) / 50, per quarter
-export const MALPRACTICE_BASE = 125_000
+export const MALPRACTICE_BASE = 250_000
 
 // Readmission formula: base - (quality * sensitivity)
 export const READMISSION_BASE = 0.25
@@ -118,8 +118,9 @@ export function programQualityScore(programs: ProgramState): number {
 
 // Build the initial hospital state
 export function createInitialState(eventDeck: import('./types').ExternalEvent[]): HospitalState {
-  const medicalCases = Math.round(STARTING_PATIENT_VOLUME * (1 - SURGICAL_FRACTION))
-  const surgicalCases = Math.round(STARTING_PATIENT_VOLUME * SURGICAL_FRACTION)
+  const surgicalDemand = Math.round(STARTING_PATIENT_VOLUME * SURGICAL_FRACTION)
+  const surgicalCases = Math.min(surgicalDemand, STARTING_OR_CAPACITY)
+  const medicalCases = STARTING_PATIENT_VOLUME - surgicalCases
 
   const programs: ProgramState = {
     nurseRatio: STARTING_NURSE_RATIO,
@@ -134,13 +135,20 @@ export function createInitialState(eventDeck: import('./types').ExternalEvent[])
   const overheadCost = OVERHEAD_PER_QUARTER + malpracticeCost
   const totalExpenses = laborCost + supplyCost + overheadCost + CAPITAL_DEPRECIATION_PER_QUARTER
 
-  const medicareCases = Math.round(medicalCases * PAYER_MIX.medicare / (1 - SURGICAL_FRACTION))
-  const commercialCases = Math.round(medicalCases * PAYER_MIX.commercial / (1 - SURGICAL_FRACTION))
-  const medicaidCases = Math.round(medicalCases * PAYER_MIX.medicaid / (1 - SURGICAL_FRACTION))
-  const selfPayCases = medicalCases - medicareCases - commercialCases - medicaidCases
+  const medicareCases = Math.round(medicalCases * PAYER_MIX.medicare)
+  const commercialCases = Math.round(medicalCases * PAYER_MIX.commercial)
+  const medicaidCases = Math.round(medicalCases * PAYER_MIX.medicaid)
+  const selfPayCases = Math.max(0, medicalCases - medicareCases - commercialCases - medicaidCases)
+
+  // Apply readmission penalty to Medicare rate (same logic as financial.ts)
+  const startingReadmission = READMISSION_BASE - STARTING_QUALITY * READMISSION_SENSITIVITY
+  let medicareEffective = MEDICARE_RATE * STARTING_DRG_ACCURACY
+  if (startingReadmission > READMISSION_PENALTY_THRESHOLD) {
+    medicareEffective *= (1 - READMISSION_PENALTY_RATE)
+  }
 
   const medicalRevenue =
-    medicareCases * MEDICARE_RATE * STARTING_DRG_ACCURACY +
+    medicareCases * medicareEffective +
     commercialCases * COMMERCIAL_RATE +
     medicaidCases * MEDICAID_RATE +
     selfPayCases * SELF_PAY_RATE
@@ -204,7 +212,7 @@ export function createInitialState(eventDeck: import('./types').ExternalEvent[])
         medicare: {
           share: PAYER_MIX.medicare,
           baseRate: MEDICARE_RATE,
-          effectiveRate: MEDICARE_RATE * STARTING_DRG_ACCURACY,
+          effectiveRate: medicareEffective,
           cases: medicareCases,
         },
         commercial: {

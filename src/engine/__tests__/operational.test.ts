@@ -28,7 +28,7 @@ describe('composeEffects', () => {
 
   it('clamps to minimum bound', () => {
     const result = composeEffects(3.0, [-2.0], DOMAIN_BOUNDS.lengthOfStay)
-    expect(result).toBe(2.0) // min is 2.0
+    expect(result).toBe(3.5) // min is 3.5
   })
 
   it('clamps to maximum bound', () => {

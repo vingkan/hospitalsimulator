@@ -157,51 +157,32 @@ export interface ExternalEvent {
   teaches: string                // one-line lesson for facilitator
 }
 
-// Decision packages
-export interface DecisionPackage {
-  id: string
-  name: string
-  description: string
-  available: (state: HospitalState) => boolean
-  strategicChoice: {
-    question: string
-    options: StrategicOption[]
-  }
-  implementationChoices: ImplementationChoice[]
-  facilitatorNote: string
-}
+// Operations console state: what the facilitator sets each quarter via direct levers.
+// This type lives in React (not in engine state). On submit, it maps to ProgramState + effects.
+export type HospitalistConsoleState =
+  | { active: false }
+  | { active: true; workforce: 'employed' | 'contracted'; cdiIntensity: 'light' | 'aggressive'; documentationTraining: boolean }
 
-export interface StrategicOption {
-  id: string
-  label: string
-  description: string
-}
+export type DischargeConsoleState =
+  | { active: false }
+  | { active: true; model: 'dedicated_planners' | 'nurse_led'; postAcutePartnerships: boolean }
 
-export interface ImplementationChoice {
-  id: string
-  question: string
-  dependsOnStrategic?: string    // only show if this strategic option was chosen
-  options: ImplementationOption[]
-}
-
-export interface ImplementationOption {
-  id: string
-  label: string
-  description: string            // trade-off explanation
-}
-
-// What the player chose for a single package
-export interface SelectedDecision {
-  packageId: string
-  strategicOptionId: string
-  implementationOptionIds: string[]
+export interface OperationsConsoleState {
+  nurseRatio: number
+  compensationChange: number
+  headcountDelta: number  // +/- FTEs per quarter, clamped to [-100, +100]
+  hospitalist: HospitalistConsoleState
+  dischargeCoordination: DischargeConsoleState
+  supplyTier: 'budget' | 'standard' | 'premium'
+  surgicalExpansion: 'none' | 'minor' | 'major'
+  bedChange: 'none' | 'add' | 'close'
 }
 
 // Result of simulating one quarter
 export interface QuarterResult {
   quarter: number
   state: HospitalState
-  decisions: SelectedDecision[]
+  programs: ProgramState  // snapshot of programs state this quarter
   event: ExternalEvent
   narrative: string[]
   operationalHighlights: string[]

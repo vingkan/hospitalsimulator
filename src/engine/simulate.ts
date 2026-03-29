@@ -1,6 +1,6 @@
 import type {
   HospitalState,
-  SelectedDecision,
+  OperationsConsoleState,
   ExternalEvent,
   QuarterResult,
   OperationalEffects,
@@ -10,25 +10,30 @@ import type {
 import { computeOperational } from './operational'
 import { computeFinancial } from './financial'
 import { buildNarrative } from './narrative'
-import { allPackages } from '../decisions'
 
 /**
- * Simulate one quarter. Pure function: takes current state + decisions + event,
+ * Simulate one quarter. Pure function: takes current state + console state + event,
  * returns the new state wrapped in a QuarterResult.
  */
 export function simulateQuarter(
   state: HospitalState,
-  decisions: SelectedDecision[],
+  consoleState: OperationsConsoleState,
   event: ExternalEvent
 ): QuarterResult {
   // Step 1: Apply pending effects from previous quarters
   let currentState = applyPendingEffects(state)
 
-  // Step 2: Apply decision effects (update programs state)
-  currentState = applyDecisions(currentState, decisions)
+  // Step 2: Apply console state (update programs and headcount)
+  const { updatedState, additionalEffects: consoleEffects } = applyConsoleState(currentState, consoleState)
+
+  currentState = updatedState
 
   // Step 3: Collect all operational and financial effects
   const { opEffects, finEffects, newPending } = collectEffects(currentState, event)
+
+  // Merge console-produced effects with event/pending effects
+  for (const fx of consoleEffects.op) opEffects.push(fx)
+  for (const fx of consoleEffects.fin) finEffects.push(fx)
 
   // Step 4: Recompute operational metrics
   const newOperational = computeOperational(currentState, opEffects)
@@ -70,7 +75,7 @@ export function simulateQuarter(
   const result: QuarterResult = {
     quarter: currentState.quarter,
     state: newState,
-    decisions,
+    programs: { ...currentState.programs },
     event,
     ...narrativeResult,
   }
@@ -79,6 +84,25 @@ export function simulateQuarter(
   newState.history = [...currentState.history, result]
 
   return result
+}
+
+/** Build a default console state from the current programs (no changes from last quarter) */
+export function defaultConsoleState(state: HospitalState): OperationsConsoleState {
+  const p = state.programs
+  return {
+    nurseRatio: p.nurseRatio,
+    compensationChange: p.compensationChange,
+    headcountDelta: 0,
+    hospitalist: p.hospitalist?.active
+      ? { active: true, workforce: p.hospitalist.workforce, cdiIntensity: p.hospitalist.cdiIntensity, documentationTraining: p.hospitalist.documentationTraining }
+      : { active: false },
+    dischargeCoordination: p.dischargeCoordination?.active
+      ? { active: true, model: p.dischargeCoordination.model, postAcutePartnerships: p.dischargeCoordination.postAcutePartnerships }
+      : { active: false },
+    supplyTier: p.supplyTier,
+    surgicalExpansion: p.surgicalExpansion?.active ? p.surgicalExpansion.investmentLevel : 'none',
+    bedChange: 'none',
+  }
 }
 
 /** Apply any pending effects that are due this quarter */
@@ -90,86 +114,105 @@ function applyPendingEffects(state: HospitalState): HospitalState {
   return state
 }
 
-/** Apply player decisions: update programs state based on selected options */
-function applyDecisions(state: HospitalState, decisions: SelectedDecision[]): HospitalState {
-  let programs = { ...state.programs }
+/** Apply console state: map lever values to ProgramState and produce additional effects */
+function applyConsoleState(
+  state: HospitalState,
+  console: OperationsConsoleState
+): {
+  updatedState: HospitalState
+  additionalEffects: { op: OperationalEffects[]; fin: FinancialEffects[] }
+} {
+  const programs = { ...state.programs }
+  const opEffects: OperationalEffects[] = []
+  const finEffects: FinancialEffects[] = []
 
-  for (const decision of decisions) {
-    const pkg = allPackages.find(p => p.id === decision.packageId)
-    if (!pkg) continue
+  // Staffing: direct assignment
+  programs.nurseRatio = console.nurseRatio
+  programs.compensationChange = console.compensationChange
 
-    switch (pkg.id) {
-      case 'hospitalist': {
-        if (decision.strategicOptionId === 'establish') {
-          const workforce = decision.implementationOptionIds.includes('employed')
-            ? 'employed' as const : 'contracted' as const
-          const cdi = decision.implementationOptionIds.includes('aggressive-cdi')
-            ? 'aggressive' as const : 'light' as const
-          const training = decision.implementationOptionIds.includes('invest-training')
+  // Supply tier: direct assignment
+  programs.supplyTier = console.supplyTier
 
-          // Effectiveness starts at 1.0 for employed, 0.7 for contracted
-          let effectiveness = workforce === 'employed' ? 1.0 : 0.7
-          // Aggressive CDI with contracted workforce degrades effectiveness
-          if (workforce === 'contracted' && cdi === 'aggressive') {
-            effectiveness *= 0.8
-          }
-
-          programs.hospitalist = {
-            active: true,
-            workforce,
-            cdiIntensity: cdi,
-            documentationTraining: training,
-            effectiveness,
-          }
-        }
-        break
-      }
-
-      case 'nursing': {
-        if (decision.strategicOptionId === 'adjust') {
-          const ratioOption = decision.implementationOptionIds.find(id => id.startsWith('ratio-'))
-          if (ratioOption) {
-            programs.nurseRatio = parseInt(ratioOption.replace('ratio-', ''), 10)
-          }
-          const compOption = decision.implementationOptionIds.find(id => id.startsWith('comp-'))
-          if (compOption) {
-            programs.compensationChange = parseInt(compOption.replace('comp-', ''), 10)
-          }
-        }
-        break
-      }
-
-      case 'discharge-planning': {
-        if (decision.strategicOptionId === 'invest') {
-          const model = decision.implementationOptionIds.includes('dedicated')
-            ? 'dedicated_planners' as const : 'nurse_led' as const
-          const partnerships = decision.implementationOptionIds.includes('partnerships')
-
-          programs.dischargeCoordination = {
-            active: true,
-            model,
-            postAcutePartnerships: partnerships,
-          }
-        }
-        break
-      }
-
-      case 'surgical-expansion': {
-        if (decision.strategicOptionId === 'expand') {
-          const level = decision.implementationOptionIds.includes('major')
-            ? 'major' as const : 'minor' as const
-
-          programs.surgicalExpansion = {
-            active: true,
-            investmentLevel: level,
-          }
-        }
-        break
-      }
+  // Hospitalist program
+  if (console.hospitalist.active) {
+    const h = console.hospitalist
+    // Derive effectiveness from workforce model
+    let effectiveness = h.workforce === 'employed' ? 1.0 : 0.7
+    if (h.workforce === 'contracted' && h.cdiIntensity === 'aggressive') {
+      effectiveness *= 0.8
     }
+    // If previously active, carry forward degraded effectiveness
+    if (state.programs.hospitalist?.active && state.programs.hospitalist.effectiveness < effectiveness) {
+      effectiveness = state.programs.hospitalist.effectiveness
+    }
+
+    programs.hospitalist = {
+      active: true,
+      workforce: h.workforce,
+      cdiIntensity: h.cdiIntensity,
+      documentationTraining: h.documentationTraining,
+      effectiveness,
+    }
+  } else {
+    programs.hospitalist = undefined
   }
 
-  return { ...state, programs }
+  // Discharge coordination
+  if (console.dischargeCoordination.active) {
+    const d = console.dischargeCoordination
+    programs.dischargeCoordination = {
+      active: true,
+      model: d.model,
+      postAcutePartnerships: d.postAcutePartnerships,
+    }
+  } else {
+    programs.dischargeCoordination = undefined
+  }
+
+  // Surgical expansion
+  if (console.surgicalExpansion !== 'none') {
+    const wasAlreadyActive = state.programs.surgicalExpansion?.active
+    programs.surgicalExpansion = {
+      active: true,
+      investmentLevel: console.surgicalExpansion,
+    }
+    // Capital cost only in the quarter it's first established
+    if (!wasAlreadyActive) {
+      finEffects.push({
+        capitalExpenditure: console.surgicalExpansion === 'major' ? 4_000_000 : 1_000_000,
+        depreciationModifier: console.surgicalExpansion === 'major' ? 400_000 : 100_000,
+      })
+    }
+  } else {
+    programs.surgicalExpansion = undefined
+  }
+
+  // Headcount delta: apply to financial state
+  const prevHeadcount = state.financial.expenses.labor.headcount
+  const newHeadcount = Math.max(800, Math.min(2000, prevHeadcount + console.headcountDelta))
+  const updatedFinancial = {
+    ...state.financial,
+    expenses: {
+      ...state.financial.expenses,
+      labor: {
+        ...state.financial.expenses.labor,
+        headcount: newHeadcount,
+      },
+    },
+  }
+
+  // Bed change
+  if (console.bedChange === 'add') {
+    opEffects.push({ bedModifier: 20 })
+    finEffects.push({ capitalExpenditure: 500_000 }) // cost of adding beds
+  } else if (console.bedChange === 'close') {
+    opEffects.push({ bedModifier: -20 })
+  }
+
+  return {
+    updatedState: { ...state, programs, financial: updatedFinancial },
+    additionalEffects: { op: opEffects, fin: finEffects },
+  }
 }
 
 /** Collect all operational and financial effects from events and active events */
@@ -215,20 +258,7 @@ function collectEffects(
     }
   }
 
-  // Capital expenditure for surgical expansion
-  if (state.programs.surgicalExpansion?.active) {
-    const level = state.programs.surgicalExpansion.investmentLevel
-    // Only apply capital cost in the quarter it was established
-    const wasJustEstablished = !state.history.some(
-      h => h.state.programs.surgicalExpansion?.active
-    )
-    if (wasJustEstablished) {
-      finEffects.push({
-        capitalExpenditure: level === 'major' ? 4_000_000 : 1_000_000,
-        depreciationModifier: level === 'major' ? 400_000 : 100_000,
-      })
-    }
-  }
+  // Note: surgical expansion capital costs are now handled in applyConsoleState
 
   return { opEffects, finEffects, newPending }
 }
