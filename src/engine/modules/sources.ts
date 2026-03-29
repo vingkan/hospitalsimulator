@@ -76,12 +76,17 @@ export const sourcesModule: HospitalModule = {
     const effectiveAdmissionRate = 1 - inputs.signals.bedPressure * BED_PRESSURE_ADMISSION_COEFFICIENT
     volume = volume * effectiveAdmissionRate
 
-    // ── Quality reputation effect ──────────────────────────────────
-    if (inputs.signals.qualityScore > 70) {
-      volume *= 1.05
-    } else if (inputs.signals.qualityScore < 40) {
-      volume *= 0.90
-    }
+    // ── Quality reputation effect (gradient, not cliff) ─────────────
+    // Linear from -5% at quality 20 to +3% at quality 90.
+    // At baseline quality 56: +0.6% (near-neutral).
+    const qualityMidpoint = 55
+    // Asymmetric: low quality penalizes volume harder than high quality rewards it
+    // Below midpoint: /300 (strong penalty). Above: /600 (modest reward).
+    const qualityDelta = inputs.signals.qualityScore - qualityMidpoint
+    const qualityReputationEffect = qualityDelta < 0
+      ? qualityDelta / 300
+      : qualityDelta / 600
+    volume *= (1 + qualityReputationEffect)
 
     volume = Math.round(volume)
 

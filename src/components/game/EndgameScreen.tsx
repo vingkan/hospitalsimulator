@@ -1,5 +1,6 @@
 import { useGame } from '../../context/GameContext'
 import { Button } from '../ui/Button'
+import { MetricsChart } from './MetricsChart'
 
 const DEBRIEF_PROMPTS = [
   {
@@ -56,6 +57,11 @@ export function EndgameScreen() {
           level={ms.qualityScore > 70 ? 'healthy' : ms.qualityScore > 50 ? 'warning' : 'crisis'} />
         <MetricBox label="vs National" value={beat ? 'Above Median' : 'Below Median'}
           level={beat ? 'healthy' : 'crisis'} />
+      </div>
+
+      {/* Year-over-year trends chart */}
+      <div className="mb-8">
+        <MetricsChart history={history} />
       </div>
 
       {/* Year-by-year summary */}

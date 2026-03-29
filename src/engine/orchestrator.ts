@@ -57,7 +57,7 @@ const EMPTY_PATIENTS: PatientCohort = { count: 0, avgAcuity: 0, surgicalFraction
 
 // ── ProgramState → ModuleControls mapping ───────────────────────────
 
-function mapMedSurgControls(programs: ProgramState): ModuleControls {
+export function mapMedSurgControls(programs: ProgramState): ModuleControls {
   return {
     nurseRatio: programs.nurseRatio,
     compensationChange: programs.compensationChange,
@@ -73,7 +73,7 @@ function mapMedSurgControls(programs: ProgramState): ModuleControls {
   }
 }
 
-function mapORControls(programs: ProgramState): ModuleControls {
+export function mapORControls(programs: ProgramState): ModuleControls {
   return {
     surgicalExpansion: programs.surgicalExpansion?.active
       ? programs.surgicalExpansion.investmentLevel

@@ -158,10 +158,10 @@ describe('Med/Surg module', () => {
 
     const { nextState } = medSurgModule.tick(state, inputs, controls)
     const ns = nextState as MedSurgState
-    // Base 1.0 + 0.08 (doc training) + 0.05 (aggressive CDI) = 1.13
+    // Base 1.0 + 0.02 (doc training) + 0.02 (aggressive CDI) = 1.04
     expect(ns.drgAccuracy).toBeGreaterThan(1.0)
-    expect(ns.drgAccuracy).toBeGreaterThanOrEqual(1.08)
-    expect(ns.drgAccuracy).toBeLessThanOrEqual(1.15)
+    expect(ns.drgAccuracy).toBeGreaterThanOrEqual(1.03)
+    expect(ns.drgAccuracy).toBeLessThanOrEqual(1.06)
   })
 
   // 7. Readmission rate from quality (inverse relationship)
@@ -264,9 +264,9 @@ describe('Med/Surg module', () => {
     const { outputs: outB } = medSurgModule.tick(state, inputs, controlsBudget)
     const { outputs: outP } = medSurgModule.tick(state, inputs, controlsPremium)
 
-    // budget: 10000 * 1800 = 18M, premium: 10000 * 3200 = 32M
-    expect(outB.financials.expenses.supplies).toBeCloseTo(18_000_000, -5)
-    expect(outP.financials.expenses.supplies).toBeCloseTo(32_000_000, -5)
+    // budget: 10000 * 2100 = 21M, premium: 10000 * 3000 = 30M
+    expect(outB.financials.expenses.supplies).toBeCloseTo(21_000_000, -5)
+    expect(outP.financials.expenses.supplies).toBeCloseTo(30_000_000, -5)
     expect(outP.financials.expenses.supplies).toBeGreaterThan(outB.financials.expenses.supplies)
   })
 
@@ -336,7 +336,7 @@ describe('Med/Surg module', () => {
     // Hospitalist only
     const controlsH = { ...defaultControls(), hospitalistActive: true }
     const { outputs: outH } = medSurgModule.tick(state, inputs, controlsH)
-    expect(outH.financials.expenses.programs).toBeCloseTo(2_000_000, -4)
+    expect(outH.financials.expenses.programs).toBeCloseTo(3_500_000, -4)
 
     // Both programs: hospitalist + discharge dedicated
     const controlsBoth = {
@@ -346,8 +346,8 @@ describe('Med/Surg module', () => {
       dischargeModel: 'dedicated_planners',
     }
     const { outputs: outBoth } = medSurgModule.tick(state, inputs, controlsBoth)
-    // 2M + 1.2M = 3.2M
-    expect(outBoth.financials.expenses.programs).toBeCloseTo(3_200_000, -4)
+    // 3.5M + 1.2M = 4.7M
+    expect(outBoth.financials.expenses.programs).toBeCloseTo(4_700_000, -4)
 
     // Discharge nurse-led only
     const controlsNL = {

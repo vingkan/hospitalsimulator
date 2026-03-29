@@ -1,12 +1,26 @@
+import { useState, useCallback } from 'react'
 import { useGame } from '../../context/GameContext'
 import { HospitalSchematic } from './HospitalSchematic'
 import { OperationsConsole } from './OperationsConsole'
-import { FinancialPanel } from './FinancialPanel'
+import { ProjectionPanel } from './ProjectionPanel'
+import { useProjection } from '../../hooks/useProjection'
+import { defaultConsoleState } from '../../context/GameContext'
 import type { OperationsConsoleState } from '../../engine/types'
 
 export function DecisionPhase() {
   const { state, dispatch } = useGame()
   const fin = state.engineState.financials
+
+  // Track console state for live projection
+  const [consoleState, setConsoleState] = useState<OperationsConsoleState>(
+    () => defaultConsoleState(state.engineState.programs)
+  )
+
+  const diff = useProjection(state.engineState, consoleState)
+
+  const handleSubmit = useCallback((cs: OperationsConsoleState) => {
+    dispatch({ type: 'SUBMIT_CONTROLS', consoleState: cs })
+  }, [dispatch])
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -37,18 +51,17 @@ export function DecisionPhase() {
         />
       </div>
 
-      {/* Bottom panels: console + financial */}
+      {/* Bottom panels: console + projection (replaces static financial panel) */}
       <div className="flex-1 grid grid-cols-2 gap-3 px-4 pb-4 min-h-0">
         <div className="min-h-0 overflow-hidden">
           <OperationsConsole
             programs={state.engineState.programs}
-            onSubmit={(consoleState: OperationsConsoleState) =>
-              dispatch({ type: 'SUBMIT_CONTROLS', consoleState })
-            }
+            onSubmit={handleSubmit}
+            onConsoleChange={setConsoleState}
           />
         </div>
-        <div className="min-h-0 overflow-hidden">
-          <FinancialPanel financials={state.engineState.financials} />
+        <div className="min-h-0 overflow-y-auto hide-scrollbar">
+          <ProjectionPanel diff={diff} financials={state.engineState.financials} />
         </div>
       </div>
     </div>

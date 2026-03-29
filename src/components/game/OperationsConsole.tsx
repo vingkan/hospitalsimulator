@@ -6,14 +6,19 @@ import { Button } from '../ui/Button'
 interface Props {
   programs: ProgramState
   onSubmit: (consoleState: OperationsConsoleState) => void
+  onConsoleChange?: (consoleState: OperationsConsoleState) => void
 }
 
-export function OperationsConsole({ programs, onSubmit }: Props) {
+export function OperationsConsole({ programs, onSubmit, onConsoleChange }: Props) {
   const [cs, setCs] = useState<OperationsConsoleState>(() => defaultConsoleState(programs))
 
   const update = useCallback(<K extends keyof OperationsConsoleState>(key: K, value: OperationsConsoleState[K]) => {
-    setCs(prev => ({ ...prev, [key]: value }))
-  }, [])
+    setCs(prev => {
+      const next = { ...prev, [key]: value }
+      onConsoleChange?.(next)
+      return next
+    })
+  }, [onConsoleChange])
 
   return (
     <div className="rounded-xl p-5 h-full flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -22,7 +27,7 @@ export function OperationsConsole({ programs, onSubmit }: Props) {
         Operations Console
       </h3>
 
-      <div className="flex-1 space-y-4 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto hide-scrollbar">
         {/* Staffing */}
         <Section title="Staffing & Labor">
           <SliderControl label="Nurse Ratio" value={cs.nurseRatio} min={4} max={8} step={1}

@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useGame } from '../../context/GameContext'
 import { Button } from '../ui/Button'
+import { MetricsChart } from './MetricsChart'
+import { CausalTrace } from './CausalTrace'
+import { buildResultsDiff } from '../../hooks/useProjection'
 
 export function ResultsPhase() {
   const { state, dispatch } = useGame()
@@ -15,6 +18,14 @@ export function ResultsPhase() {
     const timer = setTimeout(() => setRevealed(true), pauseDuration)
     return () => clearTimeout(timer)
   }, [result?.year, pauseDuration])
+
+  // Build causal diff from current vs previous year
+  const causalDiff = useMemo(() => {
+    if (!result) return null
+    const history = result.engineResult.state.history
+    const prevResult = history.length > 1 ? history[history.length - 2] : null
+    return buildResultsDiff(result.engineResult, prevResult)
+  }, [result])
 
   if (!result) return null
 
@@ -63,6 +74,13 @@ export function ResultsPhase() {
         <p className="text-[13px] italic" style={{ color: 'var(--text-muted)' }}>Teaches: {result.engineResult.event.teaches}</p>
       </div>
 
+      {/* Causal trace (year 2+) */}
+      {causalDiff && (
+        <div className="mb-6">
+          <CausalTrace diff={causalDiff} />
+        </div>
+      )}
+
       {/* Narrative sections */}
       <div className="space-y-4 mb-6">
         {result.operationalHighlights.length > 0 && (
@@ -83,6 +101,11 @@ export function ResultsPhase() {
         {result.financialHighlights.length > 0 && (
           <NarrativeSection title="Financial Impact" items={result.financialHighlights} />
         )}
+      </div>
+
+      {/* Year-over-year chart (visible after year 2) */}
+      <div className="mb-6">
+        <MetricsChart history={result.engineResult.state.history} />
       </div>
 
       {/* Discussion prompt */}

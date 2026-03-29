@@ -36,9 +36,9 @@ const SUPPLY_TIER_QUALITY: Record<string, number> = {
 }
 
 const SUPPLY_COST_PER_CASE: Record<string, number> = {
-  budget: 1_800,
+  budget: 2_100,    // narrower gap: $300 savings vs standard, not $600
   standard: 2_400,
-  premium: 3_200,
+  premium: 3_000,   // narrower gap: $600 premium, not $800
 }
 
 const QUALITY_WEIGHTS = {
@@ -51,7 +51,7 @@ const READMISSION_BASE = 0.25
 const READMISSION_SENSITIVITY = 0.0015 // per quality point
 
 // Program subsidies (annual)
-const HOSPITALIST_SUBSIDY_PER_YEAR = 2_000_000
+const HOSPITALIST_SUBSIDY_PER_YEAR = 3_500_000
 const DISCHARGE_DEDICATED_SUBSIDY_PER_YEAR = 1_200_000
 const DISCHARGE_NURSELED_SUBSIDY_PER_YEAR = 400_000
 
@@ -170,7 +170,8 @@ export const medSurgModule: HospitalModule = {
 
     // ── Headcount ──────────────────────────────────────────────────
     const headcount = Math.max(0, s.headcount + headcountDelta)
-    const avgCompPerYear = s.avgCompPerYear * (1 + compensationChange / 100)
+    // Apply comp change to BASE rate, not running value (prevents compounding)
+    const avgCompPerYear = DEFAULT_AVG_COMP_PER_YEAR * (1 + compensationChange / 100)
 
     // ── Hospitalist effectiveness ──────────────────────────────────
     let hospitalistEffectiveness = 0
@@ -190,16 +191,17 @@ export const medSurgModule: HospitalModule = {
     const losModifiers: number[] = []
 
     if (hospitalistActive) {
+      // Real hospitalist programs reduce LOS by 0.3-0.5 days (AHA benchmarks)
       const w = hospitalistWorkforce
       const c = hospitalistCDI
       if (w === 'employed' && c === 'light') {
-        losModifiers.push(-0.8 * hospitalistEffectiveness)
-      } else if (w === 'employed' && c === 'aggressive') {
-        losModifiers.push(-0.6 * hospitalistEffectiveness)
-      } else if (w === 'contracted' && c === 'light') {
         losModifiers.push(-0.5 * hospitalistEffectiveness)
-      } else if (w === 'contracted' && c === 'aggressive') {
+      } else if (w === 'employed' && c === 'aggressive') {
         losModifiers.push(-0.3 * hospitalistEffectiveness)
+      } else if (w === 'contracted' && c === 'light') {
+        losModifiers.push(-0.3 * hospitalistEffectiveness)
+      } else if (w === 'contracted' && c === 'aggressive') {
+        losModifiers.push(-0.2 * hospitalistEffectiveness)
       }
     }
 
@@ -219,7 +221,9 @@ export const medSurgModule: HospitalModule = {
     const lengthOfStay = composeEffects(BASE_LOS, losModifiers, DOMAIN_BOUNDS.lengthOfStay)
 
     // ── Quality ────────────────────────────────────────────────────
-    const nurseQuality = interpolateNurseQuality(nurseRatio)
+    // Compensation affects nurse morale/retention: -5% comp → -10% nurse quality
+    const compQualityFactor = 1 + compensationChange * 0.02
+    const nurseQuality = interpolateNurseQuality(nurseRatio) * Math.max(0.5, Math.min(1.2, compQualityFactor))
     const programQuality = programQualityScore(
       hospitalistActive,
       hospitalistDocTraining,
@@ -242,13 +246,14 @@ export const medSurgModule: HospitalModule = {
     // ── DRG accuracy ───────────────────────────────────────────────
     let drgBase = 1.0
     if (hospitalistActive) {
+      // Doc training: real CDI improves case-mix index by 1-2%
       if (hospitalistDocTraining) {
-        drgBase += 0.08 * hospitalistEffectiveness
+        drgBase += 0.02 * hospitalistEffectiveness
       }
       if (hospitalistCDI === 'aggressive') {
-        drgBase += 0.05 * hospitalistEffectiveness
-      } else {
         drgBase += 0.02 * hospitalistEffectiveness
+      } else {
+        drgBase += 0.01 * hospitalistEffectiveness
       }
     }
 
@@ -287,7 +292,10 @@ export const medSurgModule: HospitalModule = {
     // Labor: fixed + variable split (70/30)
     // Fixed staff (management, specialists, admin) always paid.
     // Variable staff (PRN/agency) scales with census utilization.
-    const overtimeMultiplier = getOvertimeMultiplier(nurseRatio)
+    // Comp cuts increase turnover → more overtime/agency usage
+    // -5% comp adds ~5% overtime premium (turnover backfill)
+    const compOvertimePenalty = compensationChange < 0 ? 1 + Math.abs(compensationChange) * 0.01 : 1.0
+    const overtimeMultiplier = getOvertimeMultiplier(nurseRatio) * compOvertimePenalty
     const fixedStaff = headcount * 0.70
     const variableStaff = headcount * 0.30
     // Hours needed: nursing hours (24/ratio per patient-day) × 2.4 for all variable roles
