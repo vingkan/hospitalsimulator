@@ -272,3 +272,89 @@ describe('Calibration: module fitness criteria', () => {
     }
   })
 })
+
+// ── Coupling calibration contract ────────────────────────────────────
+
+describe('Calibration: coupling contract', () => {
+  it('couplings produce no deviation at default lever positions', () => {
+    // Default programs: nurseRatio=5, comp=0, standard supplies, no programs, no expansion
+    // With no programs active, couplings should have zero effect
+    const state = initializeGame(noEventDeck())
+    const r = simulateYear(state, defaultPrograms(), NO_EVENT)
+
+    // All existing fitness criteria must still pass
+    expect(r.financials.margin).toBeGreaterThanOrEqual(0.01)
+    expect(r.financials.margin).toBeLessThanOrEqual(0.04)
+
+    const laborPct = r.financials.expenses.labor / r.financials.expenses.total
+    expect(laborPct).toBeGreaterThanOrEqual(0.50)
+    expect(laborPct).toBeLessThanOrEqual(0.60)
+
+    const supplyPct = r.financials.expenses.supplies / r.financials.expenses.total
+    expect(supplyPct).toBeGreaterThanOrEqual(0.15)
+    expect(supplyPct).toBeLessThanOrEqual(0.20)
+
+    const ms = r.state.moduleStates.medsurg as MedSurgState
+    expect(ms.occupancyRate).toBeGreaterThanOrEqual(0.65)
+    expect(ms.occupancyRate).toBeLessThanOrEqual(0.85)
+  })
+
+  it('C1 coupling produces >= 1pp margin delta when conflict triggers', () => {
+    const state = initializeGame(noEventDeck())
+
+    // Good staffing + major expansion
+    const goodStaff: ProgramState = {
+      nurseRatio: 4,
+      compensationChange: 5,
+      supplyTier: 'standard',
+      surgicalExpansion: { active: true, investmentLevel: 'major' },
+    }
+
+    // Bad staffing + major expansion
+    const badStaff: ProgramState = {
+      nurseRatio: 7,
+      compensationChange: 0,
+      supplyTier: 'standard',
+      surgicalExpansion: { active: true, investmentLevel: 'major' },
+    }
+
+    const rGood = simulateYear(state, goodStaff, NO_EVENT)
+    const rBad = simulateYear(state, badStaff, NO_EVENT)
+
+    const marginDelta = rGood.financials.margin - rBad.financials.margin
+    expect(marginDelta).toBeGreaterThanOrEqual(0.01) // >= 1pp
+  })
+
+  it('C2 coupling: hospitalist effectiveness degrades measurably at low comp', () => {
+    // The coupling mechanism: LOS reduction, DRG accuracy, quality, and readmissions
+    // all degrade when compensation is cut. Verify the operational metrics diverge.
+    const state = initializeGame(noEventDeck())
+
+    const goodComp: ProgramState = {
+      nurseRatio: 5,
+      compensationChange: 5,
+      supplyTier: 'standard',
+      hospitalist: { active: true, workforce: 'employed', cdiIntensity: 'light', documentationTraining: true, effectiveness: 1.0 },
+    }
+    const badComp: ProgramState = {
+      nurseRatio: 5,
+      compensationChange: -3,
+      supplyTier: 'standard',
+      hospitalist: { active: true, workforce: 'employed', cdiIntensity: 'light', documentationTraining: true, effectiveness: 1.0 },
+    }
+
+    const rGood = simulateYear(state, goodComp, NO_EVENT)
+    const rBad = simulateYear(state, badComp, NO_EVENT)
+    const msGood = rGood.state.moduleStates.medsurg as MedSurgState
+    const msBad = rBad.state.moduleStates.medsurg as MedSurgState
+
+    // LOS should be higher at bad comp (less effective hospitalist)
+    expect(msBad.lengthOfStay).toBeGreaterThan(msGood.lengthOfStay)
+    // DRG accuracy should be lower at bad comp
+    expect(msBad.drgAccuracy).toBeLessThan(msGood.drgAccuracy)
+    // Readmission rate should be higher at bad comp (inversion triggers at eff < 0.5)
+    expect(msBad.readmissionRate).toBeGreaterThan(msGood.readmissionRate)
+    // Quality score should be lower at bad comp (program quality scales with effectiveness)
+    expect(msBad.qualityScore).toBeLessThan(msGood.qualityScore)
+  })
+})

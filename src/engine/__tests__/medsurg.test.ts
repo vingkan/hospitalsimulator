@@ -75,6 +75,7 @@ describe('Med/Surg module', () => {
       hospitalistActive: true,
       hospitalistWorkforce: 'employed',
       hospitalistCDI: 'light',
+      compensationChange: 5, // +5% comp for full hospitalist effectiveness (coupling C2)
     }
 
     const { nextState } = medSurgModule.tick(state, inputs, controls)
@@ -154,6 +155,7 @@ describe('Med/Surg module', () => {
       hospitalistWorkforce: 'employed',
       hospitalistCDI: 'aggressive',
       hospitalistDocTraining: true,
+      compensationChange: 5, // +5% comp for full hospitalist effectiveness (coupling C2)
     }
 
     const { nextState } = medSurgModule.tick(state, inputs, controls)

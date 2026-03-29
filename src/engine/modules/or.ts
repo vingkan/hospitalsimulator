@@ -89,6 +89,14 @@ export const orModule: HospitalModule = {
       completed -= Math.round(completed * cancellationRate)
     }
 
+    // Nurse ratio stress cancellations (coupling: surgical expansion × nurse ratio)
+    const nurseRatioStress = inputs.signals.nurseRatioStress ?? 0
+    if (nurseRatioStress > 0 && surgicalExpansion !== 'none') {
+      const expansionMultiplier = surgicalExpansion === 'major' ? 1.0 : 0.5
+      const stressCancellationRate = nurseRatioStress * 0.3 * expansionMultiplier
+      completed -= Math.round(completed * Math.min(0.3, stressCancellationRate))
+    }
+
     const utilization = capacity > 0 ? completed / capacity : 0
 
     // ── Financials ─────────────────────────────────────────────────

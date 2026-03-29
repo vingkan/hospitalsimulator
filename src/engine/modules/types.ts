@@ -40,6 +40,7 @@ export interface ModuleSignals {
   bedPressure: number          // 0.0 = plenty of room, 1.0 = completely full
   qualityScore: number         // 0-100
   readmissionRate: number      // fraction readmitted
+  nurseRatioStress?: number    // 0-1, coupling signal from nurse ratio × surgical expansion
 }
 
 export interface EventEffect {

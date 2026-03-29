@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react'
 import type { OperationsConsoleState, ProgramState } from '../engine/types'
 import { simulateYear, type GameState, type YearResult } from '../engine/orchestrator'
 import { NO_EVENT } from '../engine/events'
-import type { HospitalFinancials } from '../engine/modules/finance'
 import type { MedSurgState } from '../engine/modules/medsurg'
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -42,6 +41,11 @@ export interface FeedbackLoop {
   description: string
 }
 
+export interface ProjectionFog {
+  level: 0 | 1 | 2  // 0=clear (Y1), 1=bands (Y2-3), 2=greyed (Y4-5)
+  conflictSeverity: number  // 0 (no conflict) to ~1.6 (max conflict)
+}
+
 export interface ProjectionDiff {
   volume: Delta
   signals: {
@@ -67,6 +71,33 @@ export interface ProjectionDiff {
   }
   feedbackLoops: FeedbackLoop[]
   causalChain: CausalStep[]
+  fog: ProjectionFog
+}
+
+// ── Fog helpers ─────────────────────────────────────────────────────
+
+function computeFogLevel(year: number): 0 | 1 | 2 {
+  if (year <= 1) return 0
+  if (year <= 3) return 1
+  return 2
+}
+
+function computeConflictSeverity(consoleState: OperationsConsoleState): number {
+  let severity = 0
+  // C1: surgical expansion + high nurse ratio
+  if (consoleState.surgicalExpansion !== 'none' && consoleState.nurseRatio > 5) {
+    severity += Math.min(1.0, (consoleState.nurseRatio - 5) / 3)
+  }
+  // C2: hospitalist active + low compensation
+  if (consoleState.hospitalist.active && consoleState.compensationChange < 5) {
+    const compModifier = consoleState.compensationChange >= 0
+      ? 0.7 + (consoleState.compensationChange / 5) * 0.3
+      : consoleState.compensationChange >= -3
+        ? 0.4 + ((consoleState.compensationChange + 3) / 3) * 0.3
+        : 0.4
+    severity += Math.abs(1.0 - compModifier)
+  }
+  return severity
 }
 
 // ── Console → ProgramState mapping ───────────────────────────────────
@@ -147,6 +178,7 @@ function buildProjectionDiff(
   baseline: YearResult,
   projected: YearResult,
   currentReadmissions: number,
+  fog: ProjectionFog,
 ): ProjectionDiff {
   const bFin = baseline.financials
   const pFin = projected.financials
@@ -300,6 +332,7 @@ function buildProjectionDiff(
     departments: buildDepartments(projected),
     feedbackLoops,
     causalChain,
+    fog,
   }
 }
 
@@ -320,10 +353,16 @@ export function useProjection(
       const projectedPrograms = consoleToProgramState(consoleState)
       const projectedResult = simulateYear(gameState, projectedPrograms, NO_EVENT)
 
+      const fog = {
+        level: computeFogLevel(gameState.year),
+        conflictSeverity: computeConflictSeverity(consoleState),
+      }
+
       const projection = buildProjectionDiff(
         baselineResult,
         projectedResult,
         gameState.prevReadmissions,
+        fog,
       )
       setDiff(projection)
     }, 100) // 100ms debounce
@@ -440,5 +479,6 @@ export function buildResultsDiff(
     departments: buildDepartments(currentResult),
     feedbackLoops,
     causalChain,
+    fog: { level: 0 as const, conflictSeverity: 0 },
   }
 }

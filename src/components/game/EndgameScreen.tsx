@@ -4,24 +4,24 @@ import { MetricsChart } from './MetricsChart'
 
 const DEBRIEF_PROMPTS = [
   {
-    title: 'CDI uplift vs discharge throughput',
-    prompt: 'You just saw both levers in action. Which created more value in your hospital? Now think about our product: if we build for CDI uplift, we\'re increasing the DRG accuracy multiplier. If we build for discharge throughput, we\'re reducing LOS and freeing beds. Which matters more for the hospitals we sell to?',
+    title: 'Surgery expansion ripple effects',
+    prompt: 'You expanded surgery last year. What happened to med/surg?',
   },
   {
-    title: 'The feature clinicians don\'t use',
-    prompt: 'You saw that a good strategy with bad implementation fails. Our pre-admission feature sounds right to buyers but clinicians don\'t use it. What did the game teach you about the difference between what hospital leadership wants to buy and what clinicians will actually adopt?',
+    title: 'Hospitalist program underperformance',
+    prompt: 'The hospitalist program isn\'t performing. Why not? Look at compensation.',
   },
   {
-    title: 'Where does the information actually live?',
-    prompt: 'In the simulation, your DRG accuracy improved when documentation captured the full patient picture. Our product shifted from ambient scribing to chart-based solutions for the same reason. What does the game tell you about where we should look for the next source of documentation improvement?',
+    title: 'Efficiency vs. quality tradeoffs',
+    prompt: 'You cut supply costs AND sped up discharge. What happened to readmissions?',
   },
   {
-    title: 'Building for the wrong workflow',
-    prompt: 'In the game, you saw that understanding the exact clinical workflow determines whether a program creates value. We built POA on H&P notes, which is useless because all H&P conditions are already assumed to be POA. What does the game teach you about the cost of building features without understanding the clinical workflow deeply enough?',
+    title: 'Unexpected consequences',
+    prompt: 'Which of your decisions created unexpected consequences in a different department?',
   },
   {
-    title: 'The feature the customer demanded that didn\'t work',
-    prompt: 'In the game, you learned that external constraints are real but your response to them matters. Our customer insisted on EHR write-back, we built it, and it was too clunky. That work came at the cost of other CDI or documentation features. What does the game teach you about navigating customer demands vs. building what actually works?',
+    title: 'Hindsight strategy',
+    prompt: 'If you played again, which Year 1 decision would you change?',
   },
 ]
 

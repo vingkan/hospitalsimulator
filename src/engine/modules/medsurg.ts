@@ -98,6 +98,7 @@ function computeHospitalistEffectiveness(
   workforce: string,
   cdi: string,
   prevEffectiveness: number | null,
+  compensationChange: number = 0,
 ): number {
   let eff = workforce === 'employed' ? 1.0 : 0.7
   if (workforce === 'contracted' && cdi === 'aggressive') {
@@ -107,18 +108,41 @@ function computeHospitalistEffectiveness(
   if (prevEffectiveness !== null && prevEffectiveness < eff) {
     eff = prevEffectiveness
   }
+  // Compensation coupling: effectiveness degrades with comp cuts
+  // comp >= +5%: compModifier = 1.0 (full effectiveness)
+  // comp = 0%: compModifier = 0.7 (turnover dilutes gains)
+  // comp <= -3%: compModifier = 0.4 (burnout, coordination breaks)
+  let compModifier: number
+  if (compensationChange >= 5) {
+    compModifier = 1.0
+  } else if (compensationChange >= 0) {
+    // Linear interpolation: 0% → 0.7, 5% → 1.0
+    compModifier = 0.7 + (compensationChange / 5) * 0.3
+  } else if (compensationChange >= -3) {
+    // Linear interpolation: -3% → 0.4, 0% → 0.7
+    compModifier = 0.4 + ((compensationChange + 3) / 3) * 0.3
+  } else {
+    compModifier = 0.4
+  }
+  eff *= compModifier
   return eff
 }
 
-/** Compute program quality score */
+/** Compute program quality score, scaled by hospitalist effectiveness */
 function programQualityScore(
   hospitalistActive: boolean,
   hospitalistDocTraining: boolean,
   dischargeActive: boolean,
+  hospitalistEffectiveness: number = 1.0,
 ): number {
-  if (hospitalistActive && hospitalistDocTraining) return 100
-  if (hospitalistActive || dischargeActive) return 60
-  return 20
+  const noProgram = 20
+  let score: number
+  if (hospitalistActive && hospitalistDocTraining) score = 100
+  else if (hospitalistActive || dischargeActive) score = 60
+  else return noProgram
+  // Scale the program benefit by effectiveness (C2 coupling)
+  // At full effectiveness: full score. At 0.4: score regresses toward noProgram baseline.
+  return noProgram + (score - noProgram) * hospitalistEffectiveness
 }
 
 /** Collect relevant event effects for this module */
@@ -181,6 +205,7 @@ export const medSurgModule: HospitalModule = {
         hospitalistWorkforce,
         hospitalistCDI,
         s.prevHospitalistEffectiveness,
+        compensationChange,
       )
       nextPrevEffectiveness = hospitalistEffectiveness
     } else {
@@ -228,6 +253,7 @@ export const medSurgModule: HospitalModule = {
       hospitalistActive,
       hospitalistDocTraining,
       dischargeActive,
+      hospitalistEffectiveness,
     )
     const supplyQuality = SUPPLY_TIER_QUALITY[supplyTier] ?? 60
 
@@ -269,6 +295,14 @@ export const medSurgModule: HospitalModule = {
     const readmissionModifiers: number[] = []
     if (dischargeActive) {
       readmissionModifiers.push(dischargePartnerships ? -0.02 : -0.01)
+    }
+    // C2 readmission inversion: bad hospitalist program increases readmissions
+    // At low effectiveness, coordination dependencies break: handoffs fail,
+    // documentation gaps appear, discharge planning falls through.
+    // The penalty scales with how far below 0.5 effectiveness we are.
+    if (hospitalistActive && hospitalistEffectiveness < 0.5) {
+      const inversionStrength = (0.5 - hospitalistEffectiveness) / 0.5 // 0 at 0.5, 1.0 at 0
+      readmissionModifiers.push(0.03 + inversionStrength * 0.04) // 0.03 to 0.07
     }
     // No event readmission field in EventEffect, skip
 

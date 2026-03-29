@@ -81,6 +81,17 @@ export function mapORControls(programs: ProgramState): ModuleControls {
   }
 }
 
+// ── Coupling signals ────────────────────────────────────────────────
+
+export function computeCouplingSignals(programs: ProgramState): { nurseRatioStress: number } {
+  const hasExpansion = programs.surgicalExpansion?.active ?? false
+  if (!hasExpansion) return { nurseRatioStress: 0 }
+  // Ramps from 0 at ratio 5 to 1.0 at ratio 8
+  const ratio = programs.nurseRatio
+  const stress = ratio <= 5 ? 0 : Math.min(1.0, (ratio - 5) / 3)
+  return { nurseRatioStress: stress }
+}
+
 // ── Bed pressure recalculation ──────────────────────────────────────
 
 /** Pure function: recalculate bed pressure accounting for OR recovery patients */
@@ -88,9 +99,11 @@ export function recalcBedPressure(
   medsurgOutput: ModuleOutputs,
   orRecoveryCount: number,
   medsurgState: MedSurgState,
+  nurseRatioStress: number = 0,
 ): number {
-  // OR recovery patients consume Med/Surg beds. Adjust occupancy.
-  const totalPatients = medsurgOutput.patients.count + orRecoveryCount
+  // OR recovery patients consume Med/Surg beds. Nurse ratio stress increases effective recovery burden.
+  const effectiveRecoveryCount = orRecoveryCount * (1 + nurseRatioStress * 0.5)
+  const totalPatients = medsurgOutput.patients.count + effectiveRecoveryCount
   const adjustedOccupancy = Math.min(1.0,
     (totalPatients * medsurgOutput.patients.avgLOS) / (medsurgState.beds * 365)
   )
@@ -110,6 +123,7 @@ export function simulateYear(
   const medsurgControls = mapMedSurgControls(programs)
   const orControls = mapORControls(programs)
   const sourcesControls: ModuleControls = {} // no player controls
+  const couplingSignals = computeCouplingSignals(programs)
 
   // ── Pass 1: Sources without bed pressure ────────────────────────
   const sourcesInput1: ModuleInputs = {
@@ -166,7 +180,10 @@ export function simulateYear(
       surgicalFraction: 1.0,
       avgLOS: 3.0,
     },
-    signals: medsurgResult2.outputs.signals,
+    signals: {
+      ...medsurgResult2.outputs.signals,
+      nurseRatioStress: couplingSignals.nurseRatioStress,
+    },
     events,
     readmissions: 0,
   }
@@ -177,6 +194,7 @@ export function simulateYear(
     medsurgResult2.outputs,
     orResult.outputs.patients.count,
     medsurgResult2.nextState as MedSurgState,
+    couplingSignals.nurseRatioStress,
   )
 
   // Update Med/Surg signals with final bed pressure
